@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: async-align-postgres
+    environment:
+      POSTGRES_DB: async_align
+      POSTGRES_USER: async_align
+      POSTGRES_PASSWORD: async_align
+    ports:
+      - "5432:5432"
+    volumes:
+      - async-align-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U async_align -d async_align"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  async-align-postgres-data:
