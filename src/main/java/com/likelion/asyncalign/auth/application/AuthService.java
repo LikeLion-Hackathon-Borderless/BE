@@ -1,6 +1,6 @@
 package com.likelion.asyncalign.auth.application;
 
-import java.time.ZoneId;
+import java.time.LocalTime;
 
 import com.likelion.asyncalign.auth.dto.AuthResponse;
 import com.likelion.asyncalign.auth.dto.LoginRequest;
@@ -20,11 +20,18 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
+    private final EmailVerificationService emailVerificationService;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, TokenService tokenService) {
+    public AuthService(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            TokenService tokenService,
+            EmailVerificationService emailVerificationService
+    ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.tokenService = tokenService;
+        this.emailVerificationService = emailVerificationService;
     }
 
     public AuthResponse signUp(SignUpRequest request) {
@@ -32,19 +39,11 @@ public class AuthService {
         if (userRepository.existsByEmailIgnoreCase(email)) {
             throw new ApiException(ErrorCode.EMAIL_ALREADY_EXISTS, "이미 사용 중인 이메일입니다.");
         }
-        validateTimeZone(request.timeZoneId());
-        if (!request.workStart().isBefore(request.workEnd())) {
-            throw new ApiException(ErrorCode.INVALID_REQUEST, "근무 시작 시각은 종료 시각보다 빨라야 합니다.");
-        }
-
-        User user = new User(
+        emailVerificationService.consume(email, request.emailVerificationToken());
+        User user = User.emailUser(
                 email,
                 passwordEncoder.encode(request.password()),
-                request.displayName().trim(),
-                request.timeZoneId(),
-                request.preferredLanguage().toLowerCase(),
-                request.workStart(),
-                request.workEnd());
+                request.displayName().trim());
         return tokenService.issue(userRepository.save(user));
     }
 
@@ -58,12 +57,19 @@ public class AuthService {
         return tokenService.issue(user);
     }
 
-    private void validateTimeZone(String timeZoneId) {
-        try {
-            ZoneId.of(timeZoneId);
-        } catch (Exception exception) {
-            throw new ApiException(ErrorCode.INVALID_REQUEST, "유효한 IANA 타임존을 입력해 주세요.");
-        }
+    public User findOrCreateGoogleUser(String email, String displayName, String pictureUrl) {
+        String normalizedEmail = email.trim().toLowerCase();
+        User user = userRepository.findByEmailIgnoreCase(normalizedEmail).orElseGet(() -> {
+            User created = User.emailUser(
+                    normalizedEmail,
+                    passwordEncoder.encode(java.util.UUID.randomUUID().toString()),
+                    displayName == null || displayName.isBlank() ? normalizedEmail : displayName.trim());
+            if (pictureUrl != null && !pictureUrl.isBlank()) {
+                created.updateProfileImageUrl(pictureUrl);
+            }
+            return userRepository.save(created);
+        });
+        return user;
     }
 
     private ApiException invalidCredentials() {

@@ -1,15 +1,23 @@
 package com.likelion.asyncalign.user.domain;
 
 import java.time.LocalTime;
+import java.time.Instant;
+import java.time.DayOfWeek;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 import com.likelion.asyncalign.global.persistence.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.ElementCollection;
 
 @Entity
 @Table(name = "users")
@@ -33,6 +41,35 @@ public class User extends BaseEntity {
 
     @Column(nullable = false, length = 10)
     private String preferredLanguage;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private WorkRole role;
+
+    @Column(length = 50)
+    private String customRole;
+
+    @Column(length = 500)
+    private String profileImageUrl;
+
+    @Column(nullable = false)
+    private boolean emailVerified;
+
+    @Column(nullable = false)
+    private Instant termsAgreedAt;
+
+    @Column(nullable = false, length = 20)
+    private String termsVersion;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private OnboardingStep onboardingStep = OnboardingStep.PROFILE;
+
+    @ElementCollection(fetch = jakarta.persistence.FetchType.EAGER)
+    @CollectionTable(name = "user_work_days", joinColumns = @jakarta.persistence.JoinColumn(name = "user_id"))
+    @Column(name = "day_of_week", nullable = false, length = 10)
+    @Enumerated(EnumType.STRING)
+    private Set<DayOfWeek> workDays = new HashSet<>();
 
     @Column(nullable = false)
     private LocalTime workStart;
@@ -62,6 +99,27 @@ public class User extends BaseEntity {
         this.preferredLanguage = preferredLanguage;
         this.workStart = workStart;
         this.workEnd = workEnd;
+        this.emailVerified = true;
+        this.termsAgreedAt = Instant.now();
+        this.termsVersion = "2026-08-13";
+    }
+
+    public static User emailUser(String email, String passwordHash, String displayName) {
+        User user = new User(
+                email,
+                passwordHash,
+                displayName,
+                "UTC",
+                "en",
+                LocalTime.of(9, 0),
+                LocalTime.of(18, 0));
+        user.workDays.addAll(Set.of(
+                DayOfWeek.MONDAY,
+                DayOfWeek.TUESDAY,
+                DayOfWeek.WEDNESDAY,
+                DayOfWeek.THURSDAY,
+                DayOfWeek.FRIDAY));
+        return user;
     }
 
     public UUID getId() {
@@ -98,5 +156,55 @@ public class User extends BaseEntity {
 
     public boolean isEnabled() {
         return enabled;
+    }
+
+    public WorkRole getRole() {
+        return role;
+    }
+
+    public String getCustomRole() {
+        return customRole;
+    }
+
+    public String getProfileImageUrl() {
+        return profileImageUrl;
+    }
+
+    public boolean isEmailVerified() {
+        return emailVerified;
+    }
+
+    public OnboardingStep getOnboardingStep() {
+        return onboardingStep;
+    }
+
+    public Set<DayOfWeek> getWorkDays() {
+        return Set.copyOf(workDays);
+    }
+
+    public void updateProfile(String displayName, WorkRole role, String customRole, String preferredLanguage) {
+        this.displayName = displayName;
+        this.role = role;
+        this.customRole = role == WorkRole.OTHER ? customRole : null;
+        this.preferredLanguage = preferredLanguage;
+        this.onboardingStep = OnboardingStep.WORK_CONTEXT;
+    }
+
+    public void updateWorkContext(
+            String timeZoneId,
+            LocalTime workStart,
+            LocalTime workEnd,
+            Set<DayOfWeek> workDays
+    ) {
+        this.timeZoneId = timeZoneId;
+        this.workStart = workStart;
+        this.workEnd = workEnd;
+        this.workDays.clear();
+        this.workDays.addAll(workDays);
+        this.onboardingStep = OnboardingStep.WORKSPACE;
+    }
+
+    public void updateProfileImageUrl(String profileImageUrl) {
+        this.profileImageUrl = profileImageUrl;
     }
 }

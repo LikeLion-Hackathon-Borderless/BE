@@ -2,12 +2,18 @@ package com.likelion.asyncalign.user.application;
 
 import java.util.List;
 import java.util.UUID;
+import java.time.ZoneId;
 
 import com.likelion.asyncalign.global.error.ApiException;
 import com.likelion.asyncalign.global.error.ErrorCode;
 import com.likelion.asyncalign.user.domain.User;
 import com.likelion.asyncalign.user.domain.UserRepository;
 import com.likelion.asyncalign.user.dto.UserResponse;
+import com.likelion.asyncalign.user.dto.UpdateProfileRequest;
+import com.likelion.asyncalign.user.dto.UpdateWorkContextRequest;
+import com.likelion.asyncalign.user.domain.WorkRole;
+import com.likelion.asyncalign.storage.FileStorageService;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,9 +23,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final FileStorageService fileStorageService;
 
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, FileStorageService fileStorageService) {
         this.userRepository = userRepository;
+        this.fileStorageService = fileStorageService;
     }
 
     public User getUser(UUID userId) {
@@ -29,6 +37,48 @@ public class UserService {
 
     public UserResponse getMe(UUID userId) {
         return UserResponse.from(getUser(userId));
+    }
+
+    @Transactional
+    public UserResponse updateProfile(UUID userId, UpdateProfileRequest request) {
+        String customRole = request.customRole() == null ? null : request.customRole().trim();
+        if (request.role() == WorkRole.OTHER && (customRole == null || customRole.isBlank())) {
+            throw new ApiException(ErrorCode.INVALID_REQUEST, "기타 역할을 선택하면 역할을 직접 입력해야 합니다.");
+        }
+
+        User user = getUser(userId);
+        user.updateProfile(
+                request.displayName().trim(),
+                request.role(),
+                customRole,
+                request.preferredLanguage().toLowerCase());
+        return UserResponse.from(user);
+    }
+
+    @Transactional
+    public UserResponse updateWorkContext(UUID userId, UpdateWorkContextRequest request) {
+        try {
+            ZoneId.of(request.timeZoneId());
+        } catch (Exception exception) {
+            throw new ApiException(ErrorCode.INVALID_REQUEST, "유효한 IANA 타임존을 입력해 주세요.");
+        }
+        if (!request.workStart().isBefore(request.workEnd())) {
+            throw new ApiException(ErrorCode.INVALID_REQUEST, "근무 시작 시각은 종료 시각보다 빨라야 합니다.");
+        }
+        User user = getUser(userId);
+        user.updateWorkContext(
+                request.timeZoneId(),
+                request.workStart(),
+                request.workEnd(),
+                request.workDays());
+        return UserResponse.from(user);
+    }
+
+    @Transactional
+    public UserResponse uploadProfileImage(UUID userId, MultipartFile file) {
+        User user = getUser(userId);
+        user.updateProfileImageUrl(fileStorageService.storeProfileImage(userId, file));
+        return UserResponse.from(user);
     }
 
     public List<UserResponse> search(UUID currentUserId, String query, int size) {

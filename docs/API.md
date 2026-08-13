@@ -2,6 +2,23 @@
 
 Base URL: `/api/v1`
 
+## Google 로그인
+
+Google 버튼은 백엔드의 OAuth2 시작 주소로 이동합니다.
+
+```text
+GET /oauth2/authorization/google
+```
+
+Google Cloud Console에 다음 승인된 리디렉션 URI를 등록합니다.
+
+```text
+http://localhost:8080/login/oauth2/code/google
+```
+
+성공하면 백엔드가 `OAUTH2_SUCCESS_REDIRECT?code={일회용 코드}`로 이동시킵니다. 프론트는
+60초 안에 `POST /auth/oauth/exchange`로 코드를 한 번 교환해 JWT를 받습니다.
+
 인증이 필요한 API에는 다음 헤더를 보냅니다.
 
 ```http
@@ -17,14 +34,25 @@ Authorization: Bearer {accessToken}
   "email": "seoyeon@example.com",
   "password": "password123!",
   "displayName": "이서연",
-  "timeZoneId": "Asia/Seoul",
-  "preferredLanguage": "ko",
-  "workStart": "09:00:00",
-  "workEnd": "18:00:00"
+  "emailVerificationToken": "UUID",
+  "termsAccepted": true
 }
 ```
 
 성공: `201 Created`
+
+이메일 가입 전에는 `POST /auth/email-verifications`로 코드를 발송하고,
+`POST /auth/email-verifications/confirm`으로 확인해 `emailVerificationToken`을 발급받습니다.
+
+### `POST /auth/oauth/exchange`
+
+```json
+{
+  "code": "Google 로그인 콜백에서 받은 UUID"
+}
+```
+
+성공 응답은 일반 로그인과 동일하며, 코드는 한 번만 사용할 수 있습니다.
 
 ### `POST /auth/login`
 
@@ -60,8 +88,25 @@ Authorization: Bearer {accessToken}
 | --- | --- | --- |
 | `GET` | `/users/me` | 현재 로그인 사용자 조회 |
 | `GET` | `/users?query=alex&size=20` | 이름 또는 이메일로 DM 상대 검색 |
+| `GET` | `/users/roles` | 프로필에서 선택 가능한 역할 목록 |
+| `PATCH` | `/users/me/profile` | 이름·역할·사용 언어 설정 |
+| `PUT` | `/users/me/profile-image` | multipart 프로필 이미지 업로드 |
+| `PATCH` | `/users/me/work-context` | 타임존·근무시간·근무요일 설정 |
 
 사용자 검색 결과에서는 현재 로그인 사용자가 제외됩니다.
+
+프로필 설정 예시:
+
+```json
+{
+  "displayName": "이서연",
+  "role": "PROJECT_MANAGER",
+  "customRole": null,
+  "preferredLanguage": "ko"
+}
+```
+
+`role`이 `OTHER`이면 `customRole`을 반드시 입력해야 합니다.
 
 ## DM 대화
 

@@ -66,10 +66,8 @@ class MessengerFlowIntegrationTest {
                 email,
                 "password123!",
                 name,
-                timeZone,
-                "en",
-                LocalTime.of(9, 0),
-                LocalTime.of(18, 0));
+                null,
+                true);
         String body = mockMvc.perform(post("/api/v1/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
