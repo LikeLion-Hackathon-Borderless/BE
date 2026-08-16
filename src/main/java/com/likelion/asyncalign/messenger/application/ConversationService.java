@@ -15,7 +15,7 @@ import com.likelion.asyncalign.messenger.domain.MessageRepository;
 import com.likelion.asyncalign.messenger.dto.ConversationResponse;
 import com.likelion.asyncalign.user.application.UserService;
 import com.likelion.asyncalign.user.domain.User;
-import com.likelion.asyncalign.user.dto.UserResponse;
+import com.likelion.asyncalign.user.dto.UserSummaryResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -107,7 +107,7 @@ public class ConversationService {
         return new ConversationResponse(
                 conversation.getId(),
                 conversation.getType().name(),
-                UserResponse.from(otherUser),
+                UserSummaryResponse.from(otherUser),
                 latestResponse,
                 unreadCount,
                 conversation.getLastMessageAt());

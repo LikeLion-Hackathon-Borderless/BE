@@ -9,6 +9,7 @@ import com.likelion.asyncalign.global.error.ErrorCode;
 import com.likelion.asyncalign.user.domain.User;
 import com.likelion.asyncalign.user.domain.UserRepository;
 import com.likelion.asyncalign.user.dto.UserResponse;
+import com.likelion.asyncalign.user.dto.UserSummaryResponse;
 import com.likelion.asyncalign.user.dto.UpdateProfileRequest;
 import com.likelion.asyncalign.user.dto.UpdateWorkContextRequest;
 import com.likelion.asyncalign.user.domain.WorkRole;
@@ -81,7 +82,7 @@ public class UserService {
         return UserResponse.from(user);
     }
 
-    public List<UserResponse> search(UUID currentUserId, String query, int size) {
+    public List<UserSummaryResponse> search(UUID currentUserId, String query, int size) {
         int safeSize = Math.clamp(size, 1, 50);
         String keyword = query == null ? "" : query.trim();
         return userRepository
@@ -91,7 +92,7 @@ public class UserService {
                         PageRequest.of(0, safeSize))
                 .stream()
                 .filter(user -> !user.getId().equals(currentUserId))
-                .map(UserResponse::from)
+                .map(UserSummaryResponse::from)
                 .toList();
     }
 }

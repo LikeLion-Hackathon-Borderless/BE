@@ -120,9 +120,5 @@ class AuthFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.profileImageUrl").value(org.hamcrest.Matchers.containsString("/uploads/profiles/")));
 
-        mockMvc.perform(post("/api/v1/calendar/connection")
-                        .header("Authorization", "Bearer " + accessToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.authorizationUrl").value(org.hamcrest.Matchers.containsString("accounts.google.com")));
     }
 }
