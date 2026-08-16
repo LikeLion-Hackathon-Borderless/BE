@@ -57,21 +57,6 @@ public class AuthService {
         return tokenService.issue(user);
     }
 
-    public User findOrCreateGoogleUser(String email, String displayName, String pictureUrl) {
-        String normalizedEmail = email.trim().toLowerCase();
-        User user = userRepository.findByEmailIgnoreCase(normalizedEmail).orElseGet(() -> {
-            User created = User.emailUser(
-                    normalizedEmail,
-                    passwordEncoder.encode(java.util.UUID.randomUUID().toString()),
-                    displayName == null || displayName.isBlank() ? normalizedEmail : displayName.trim());
-            if (pictureUrl != null && !pictureUrl.isBlank()) {
-                created.updateProfileImageUrl(pictureUrl);
-            }
-            return userRepository.save(created);
-        });
-        return user;
-    }
-
     private ApiException invalidCredentials() {
         return new ApiException(ErrorCode.INVALID_CREDENTIALS, "이메일 또는 비밀번호가 올바르지 않습니다.");
     }

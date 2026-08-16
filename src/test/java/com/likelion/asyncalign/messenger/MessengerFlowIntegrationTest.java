@@ -37,12 +37,23 @@ class MessengerFlowIntegrationTest {
         String senderToken = seoyeon.get("accessToken").toString();
         UUID alexId = UUID.fromString(((Map<?, ?>) alex.get("user")).get("id").toString());
 
+        mockMvc.perform(get("/api/v1/users")
+                        .header("Authorization", "Bearer " + senderToken)
+                        .param("query", "Alex"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].displayName").value("Alex"))
+                .andExpect(jsonPath("$[0].email").doesNotExist())
+                .andExpect(jsonPath("$[0].workStart").doesNotExist())
+                .andExpect(jsonPath("$[0].emailVerified").doesNotExist());
+
         String conversationBody = mockMvc.perform(post("/api/v1/conversations/direct")
                         .header("Authorization", "Bearer " + senderToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("otherUserId", alexId))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.otherParticipant.displayName").value("Alex"))
+                .andExpect(jsonPath("$.otherParticipant.email").doesNotExist())
+                .andExpect(jsonPath("$.otherParticipant.workStart").doesNotExist())
                 .andReturn().getResponse().getContentAsString();
         UUID conversationId = UUID.fromString(
                 objectMapper.readValue(conversationBody, new TypeReference<Map<String, Object>>() {}).get("id").toString());

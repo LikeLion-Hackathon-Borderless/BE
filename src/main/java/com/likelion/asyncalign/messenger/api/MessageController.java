@@ -7,6 +7,10 @@ import com.likelion.asyncalign.messenger.application.MessageService;
 import com.likelion.asyncalign.messenger.dto.MessagePageResponse;
 import com.likelion.asyncalign.messenger.dto.MessageResponse;
 import com.likelion.asyncalign.messenger.dto.SendMessageRequest;
+import com.likelion.asyncalign.global.config.OpenApiConfig;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -22,6 +26,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/conversations/{conversationId}/messages")
+@Tag(name = "메시지", description = "1:1 대화 메시지 조회와 전송")
+@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
 public class MessageController {
 
     private final MessageService messageService;
@@ -31,6 +37,7 @@ public class MessageController {
     }
 
     @GetMapping
+    @Operation(summary = "메시지 목록 조회", description = "before cursor 이전 메시지를 과거에서 현재 순서로 반환합니다.")
     MessagePageResponse getMessages(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID conversationId,
@@ -42,6 +49,7 @@ public class MessageController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "메시지 전송", description = "최대 4,000자의 텍스트 메시지를 전송합니다.")
     MessageResponse send(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID conversationId,
