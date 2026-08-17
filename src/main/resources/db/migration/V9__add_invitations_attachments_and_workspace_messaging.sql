@@ -19,7 +19,7 @@ create index idx_workspace_invitations_workspace on workspace_invitations(worksp
 create index idx_workspace_invitations_email on workspace_invitations(workspace_id, invited_email, status);
 
 alter table conversations add column workspace_id uuid references workspaces(id);
-alter table conversations alter column direct_key varchar(110);
+alter table conversations alter column direct_key type varchar(110);
 create index idx_conversations_workspace on conversations(workspace_id, last_message_at desc);
 
 alter table messages add column delivery_mode varchar(30) not null default 'AS_IS';
