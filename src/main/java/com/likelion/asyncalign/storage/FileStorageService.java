@@ -54,6 +54,39 @@ public class FileStorageService {
         }
     }
 
+    public String storeAttachment(
+            UUID conversationId,
+            UUID attachmentId,
+            MultipartFile file,
+            String extension
+    ) {
+        String storageKey = "attachments/" + conversationId + "/" + attachmentId + extension;
+        Path target = resolveStorageKey(storageKey);
+        try {
+            Files.createDirectories(target.getParent());
+            Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
+            return storageKey;
+        } catch (IOException exception) {
+            throw new ApiException(ErrorCode.FILE_UPLOAD_FAILED, "첨부파일 저장에 실패했습니다.");
+        }
+    }
+
+    public Path loadAttachment(String storageKey) {
+        Path path = resolveStorageKey(storageKey);
+        if (!Files.isRegularFile(path)) {
+            throw new ApiException(ErrorCode.ATTACHMENT_NOT_FOUND, "첨부파일 원본을 찾을 수 없습니다.");
+        }
+        return path;
+    }
+
+    private Path resolveStorageKey(String storageKey) {
+        Path target = root.resolve(storageKey).normalize();
+        if (!target.startsWith(root)) {
+            throw new ApiException(ErrorCode.FILE_UPLOAD_FAILED, "올바르지 않은 파일 경로입니다.");
+        }
+        return target;
+    }
+
     public Path getRoot() {
         return root;
     }

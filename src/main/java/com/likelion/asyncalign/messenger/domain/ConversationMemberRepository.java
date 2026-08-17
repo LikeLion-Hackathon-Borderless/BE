@@ -15,10 +15,13 @@ public interface ConversationMemberRepository extends JpaRepository<Conversation
     @Query("""
             select member from ConversationMember member
             join fetch member.conversation conversation
-            where member.user.id = :userId
+            where member.user.id = :userId and conversation.workspace.id = :workspaceId
             order by conversation.lastMessageAt desc
             """)
-    List<ConversationMember> findAllForUser(@Param("userId") UUID userId);
+    List<ConversationMember> findAllForUserInWorkspace(
+            @Param("userId") UUID userId,
+            @Param("workspaceId") UUID workspaceId
+    );
 
     @Query("""
             select member from ConversationMember member

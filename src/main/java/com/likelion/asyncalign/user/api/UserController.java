@@ -87,9 +87,10 @@ public class UserController {
     @Operation(summary = "사용자 검색", description = "이름 또는 이메일로 DM 상대를 검색하며 현재 사용자는 제외합니다.")
     List<UserSummaryResponse> search(
             @AuthenticationPrincipal Jwt jwt,
+            @RequestParam UUID workspaceId,
             @RequestParam(defaultValue = "") String query,
             @RequestParam(defaultValue = "20") int size
     ) {
-        return userService.search(UUID.fromString(jwt.getSubject()), query, size);
+        return userService.search(UUID.fromString(jwt.getSubject()), workspaceId, query, size);
     }
 }

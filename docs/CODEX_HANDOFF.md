@@ -47,13 +47,38 @@
 
 ### 메신저
 
-- 사용자 간 1:1 대화방 생성
-- 동일 사용자 조합의 기존 대화방 재사용
-- 내 대화방 목록
+- 워크스페이스 멤버 간 1:1 대화방 생성
+- 같은 워크스페이스·사용자 조합의 기존 대화방 재사용
+- 워크스페이스별 대화방 목록
 - 커서 기반 메시지 조회
-- 최대 4,000자 텍스트 메시지 전송
+- 텍스트·첨부파일 메시지 전송
+- 즉시 전송과 예약 전송
 - 읽음 처리와 unread count
 - UTC 저장 및 사용자 타임존 현지 시각 응답
+
+### 워크스페이스와 초대
+
+- 워크스페이스 생성·목록·상세·멤버 목록
+- OWNER 전용 소프트 삭제
+- 이메일 최대 20명 다중 초대와 공유 초대 링크
+- 초대 미리보기·수락·만료·재발급
+- 계정 기본값을 상속하는 워크스페이스별 근무 컨텍스트 예외
+
+### 첨부파일
+
+- PDF, DOCX, TXT, PNG, JPEG, WEBP 업로드
+- 파일당 최대 10MB, 메시지당 최대 10개
+- 메타데이터 조회와 권한 확인 다운로드
+- TXT·DOCX 텍스트 추출 및 AI 근거 연결
+
+### AI 검토·공통 이해·합의
+
+- 업무·담당자·기한·결과물 구조화와 사용자 수정·확정
+- OpenAI Responses API 연동 및 실패 시 보수적 로컬 분석
+- 근무시간 경고와 다음 근무 시작 시각 제안
+- AI 확정 메시지와 일반 메시지의 공통 이해 카드
+- 동의·기한 조정·설명 요청·발신자 수정·재확인 상태 전이
+- 합의/대기 스냅샷과 첨부파일 근거 기록
 
 ### API 문서
 
@@ -72,16 +97,42 @@ POST  /api/v1/auth/login
 
 GET   /api/v1/users/me
 GET   /api/v1/users/roles
-GET   /api/v1/users?query=&size=
+GET   /api/v1/users?workspaceId=&query=&size=
 PATCH /api/v1/users/me/profile
 PUT   /api/v1/users/me/profile-image
 PATCH /api/v1/users/me/work-context
+
+POST   /api/v1/workspaces
+GET    /api/v1/workspaces
+GET    /api/v1/workspaces/{workspaceId}
+GET    /api/v1/workspaces/{workspaceId}/members
+DELETE /api/v1/workspaces/{workspaceId}
+PUT    /api/v1/workspaces/{workspaceId}/members/me/work-context
+DELETE /api/v1/workspaces/{workspaceId}/members/me/work-context
+POST   /api/v1/workspaces/{workspaceId}/invitations
+POST   /api/v1/workspaces/{workspaceId}/invitation-links
+GET    /api/v1/workspace-invitations/{token}
+POST   /api/v1/workspace-invitations/{token}/accept
 
 POST  /api/v1/conversations/direct
 GET   /api/v1/conversations
 PUT   /api/v1/conversations/{conversationId}/read
 GET   /api/v1/conversations/{conversationId}/messages
 POST  /api/v1/conversations/{conversationId}/messages
+
+POST /api/v1/conversations/{conversationId}/attachments
+GET  /api/v1/attachments/{attachmentId}
+GET  /api/v1/attachments/{attachmentId}/content
+
+POST  /api/v1/conversations/{conversationId}/ai-reviews
+GET   /api/v1/ai-reviews/{reviewId}
+PATCH /api/v1/ai-reviews/{reviewId}
+POST  /api/v1/ai-reviews/{reviewId}/send
+POST  /api/v1/messages/{messageId}/understanding-cards
+GET   /api/v1/understanding-cards/{cardId}
+POST  /api/v1/understanding-cards/{cardId}/responses
+POST  /api/v1/understanding-cards/{cardId}/revisions
+GET   /api/v1/conversations/{conversationId}/agreement-logs
 ```
 
 ## DB 마이그레이션
@@ -92,6 +143,9 @@ POST  /api/v1/conversations/{conversationId}/messages
 - V4: 이메일 인증
 - V5, V6: 과거 Google 연동 테이블 생성 기록
 - V7: Google 로그인·Calendar 제거에 따라 V5, V6 테이블 삭제
+- V8: 워크스페이스, 멤버십, 워크스페이스별 근무 컨텍스트
+- V9: 초대, 첨부파일, 워크스페이스 대화, 메시지 전송 상태
+- V10: AI 검토, 공통 이해 카드, 응답·수정, 합의 기록
 
 이미 적용된 Flyway migration의 checksum을 깨뜨리지 않기 위해 V5와 V6 파일은 삭제하지 않는다. 최종 스키마에는 관련 테이블이 남지 않는다.
 
@@ -104,6 +158,7 @@ DB_PASSWORD=async_align
 JWT_SECRET=32바이트_이상의_랜덤_비밀값
 JWT_ACCESS_TOKEN_TTL=PT24H
 PUBLIC_BASE_URL=http://localhost:8080
+FRONTEND_BASE_URL=http://localhost:5173
 CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
 
 MAIL_HOST=smtp.gmail.com
@@ -112,20 +167,23 @@ MAIL_USERNAME=sender@gmail.com
 MAIL_PASSWORD=앱_비밀번호
 MAIL_FROM=sender@gmail.com
 EMAIL_VERIFICATION_REQUIRED=true
+UPLOAD_ROOT=./data/uploads
+
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-4o-mini
+OPENAI_BASE_URL=https://api.openai.com/v1
 ```
 
 `MAIL_PASSWORD`는 이메일 인증코드 발송을 위한 SMTP 자격 증명이며 소셜 로그인과 관계없다.
 
-## 다음 구현 후보
+## MVP 이후 구현 후보
 
-1. 워크스페이스 생성·선택·멤버십
-2. 이메일 초대와 초대 링크
-3. 대화에 workspace 연결
-4. 메시지 첨부파일
-5. AI 검토와 구조화된 업무 필드
-6. 공통 이해 카드와 상태 전이
-7. 합의 기록
-8. 워크스페이스별 근무 컨텍스트 예외
+1. Refresh Token과 로그아웃/토큰 폐기
+2. S3 호환 객체 저장소와 바이러스 검사
+3. PDF OCR·이미지 비전 분석 고도화
+4. WebSocket/SSE 실시간 수신
+5. 워크스페이스 소유권 이전·멤버 관리·삭제 복구
+6. AI 비동기 작업 큐와 재시도/관측성
 
 ## 유지할 결정
 
@@ -133,5 +191,5 @@ EMAIL_VERIFICATION_REQUIRED=true
 - API 성공 응답은 별도 `data` envelope 없이 DTO를 직접 반환한다.
 - 오류는 `timestamp`, `status`, `code`, `message`, `fieldErrors` 형식을 사용한다.
 - 절대 시각은 UTC로 저장하고 IANA 타임존으로 화면용 현지 시각을 계산한다.
-- 일반 전송은 향후 `UNCONFIRMED`, AI 검토 확정 전송은 공통 이해 카드 `REVIEW` 상태로 연결한다.
-- 상세 예정 계약과 상태 머신은 `docs/API.md`를 따른다.
+- 일반 전송은 `UNCONFIRMED`, AI 검토 확정 전송은 공통 이해 카드 `REVIEW` 상태로 연결한다.
+- 상세 계약과 상태 머신은 `docs/API.md`를 따른다.

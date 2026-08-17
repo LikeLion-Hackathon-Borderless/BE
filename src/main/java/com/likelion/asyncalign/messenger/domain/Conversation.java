@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 import com.likelion.asyncalign.global.persistence.BaseEntity;
+import com.likelion.asyncalign.workspace.domain.Workspace;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -11,6 +12,9 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 @Entity
@@ -25,8 +29,12 @@ public class Conversation extends BaseEntity {
     @Column(nullable = false, length = 20)
     private ConversationType type;
 
-    @Column(unique = true, length = 73)
+    @Column(unique = true, length = 110)
     private String directKey;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "workspace_id")
+    private Workspace workspace;
 
     @Column(nullable = false)
     private Instant lastMessageAt;
@@ -34,20 +42,25 @@ public class Conversation extends BaseEntity {
     protected Conversation() {
     }
 
-    private Conversation(ConversationType type, String directKey) {
+    private Conversation(ConversationType type, String directKey, Workspace workspace) {
         this.type = type;
         this.directKey = directKey;
+        this.workspace = workspace;
         this.lastMessageAt = Instant.now();
     }
 
-    public static Conversation direct(UUID firstUserId, UUID secondUserId) {
-        return new Conversation(ConversationType.DIRECT, directKey(firstUserId, secondUserId));
+    public static Conversation direct(Workspace workspace, UUID firstUserId, UUID secondUserId) {
+        return new Conversation(
+                ConversationType.DIRECT,
+                directKey(workspace.getId(), firstUserId, secondUserId),
+                workspace);
     }
 
-    public static String directKey(UUID firstUserId, UUID secondUserId) {
+    public static String directKey(UUID workspaceId, UUID firstUserId, UUID secondUserId) {
         String first = firstUserId.toString();
         String second = secondUserId.toString();
-        return first.compareTo(second) < 0 ? first + ":" + second : second + ":" + first;
+        String users = first.compareTo(second) < 0 ? first + ":" + second : second + ":" + first;
+        return workspaceId + ":" + users;
     }
 
     public void touch(Instant sentAt) {
@@ -68,5 +81,9 @@ public class Conversation extends BaseEntity {
 
     public Instant getLastMessageAt() {
         return lastMessageAt;
+    }
+
+    public Workspace getWorkspace() {
+        return workspace;
     }
 }

@@ -40,4 +40,20 @@ public interface WorkspaceMemberRepository extends JpaRepository<WorkspaceMember
     );
 
     long countByWorkspaceId(UUID workspaceId);
+
+    @Query("""
+            select member from WorkspaceMember member
+            join fetch member.user user
+            where member.workspace.id = :workspaceId
+              and user.id <> :currentUserId
+              and (lower(user.displayName) like lower(concat('%', :query, '%'))
+                or lower(user.email) like lower(concat('%', :query, '%')))
+            order by lower(user.displayName), user.id
+            """)
+    List<WorkspaceMember> searchMembers(
+            @Param("workspaceId") UUID workspaceId,
+            @Param("currentUserId") UUID currentUserId,
+            @Param("query") String query,
+            Pageable pageable
+    );
 }

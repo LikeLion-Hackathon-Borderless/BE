@@ -2,6 +2,8 @@ package com.likelion.asyncalign.workspace.application;
 
 import com.likelion.asyncalign.global.error.ApiException;
 import com.likelion.asyncalign.global.error.ErrorCode;
+import com.likelion.asyncalign.invitation.domain.InvitationStatus;
+import com.likelion.asyncalign.invitation.domain.WorkspaceInvitationRepository;
 import com.likelion.asyncalign.user.domain.User;
 import com.likelion.asyncalign.user.domain.UserRepository;
 import com.likelion.asyncalign.user.dto.UpdateWorkContextRequest;
@@ -31,15 +33,18 @@ public class WorkspaceService {
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository memberRepository;
     private final UserRepository userRepository;
+    private final WorkspaceInvitationRepository invitationRepository;
 
     public WorkspaceService(
             WorkspaceRepository workspaceRepository,
             WorkspaceMemberRepository memberRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            WorkspaceInvitationRepository invitationRepository
     ) {
         this.workspaceRepository = workspaceRepository;
         this.memberRepository = memberRepository;
         this.userRepository = userRepository;
+        this.invitationRepository = invitationRepository;
     }
 
     @Transactional
@@ -98,6 +103,8 @@ public class WorkspaceService {
                     "워크스페이스 OWNER만 삭제할 수 있습니다.");
         }
         workspace.softDelete(membership.getUser());
+        invitationRepository.findAllByWorkspaceIdAndStatus(workspaceId, InvitationStatus.PENDING)
+                .forEach(invitation -> invitation.revoke());
     }
 
     @Transactional

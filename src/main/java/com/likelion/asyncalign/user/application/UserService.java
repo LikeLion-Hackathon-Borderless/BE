@@ -14,6 +14,8 @@ import com.likelion.asyncalign.user.dto.UpdateProfileRequest;
 import com.likelion.asyncalign.user.dto.UpdateWorkContextRequest;
 import com.likelion.asyncalign.user.domain.WorkRole;
 import com.likelion.asyncalign.storage.FileStorageService;
+import com.likelion.asyncalign.workspace.domain.WorkspaceMemberRepository;
+import com.likelion.asyncalign.workspace.domain.WorkspaceRepository;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -25,10 +27,19 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
+    private final WorkspaceMemberRepository workspaceMemberRepository;
+    private final WorkspaceRepository workspaceRepository;
 
-    public UserService(UserRepository userRepository, FileStorageService fileStorageService) {
+    public UserService(
+            UserRepository userRepository,
+            FileStorageService fileStorageService,
+            WorkspaceMemberRepository workspaceMemberRepository,
+            WorkspaceRepository workspaceRepository
+    ) {
         this.userRepository = userRepository;
         this.fileStorageService = fileStorageService;
+        this.workspaceMemberRepository = workspaceMemberRepository;
+        this.workspaceRepository = workspaceRepository;
     }
 
     public User getUser(UUID userId) {
@@ -82,17 +93,24 @@ public class UserService {
         return UserResponse.from(user);
     }
 
-    public List<UserSummaryResponse> search(UUID currentUserId, String query, int size) {
+    public List<UserSummaryResponse> search(
+            UUID currentUserId,
+            UUID workspaceId,
+            String query,
+            int size
+    ) {
         int safeSize = Math.clamp(size, 1, 50);
         String keyword = query == null ? "" : query.trim();
-        return userRepository
-                .findByDisplayNameContainingIgnoreCaseOrEmailContainingIgnoreCase(
-                        keyword,
-                        keyword,
-                        PageRequest.of(0, safeSize))
+        workspaceRepository.findByIdAndDeletedAtIsNull(workspaceId)
+                .orElseThrow(() -> new ApiException(ErrorCode.WORKSPACE_NOT_FOUND, "워크스페이스를 찾을 수 없습니다."));
+        workspaceMemberRepository.findMembership(workspaceId, currentUserId)
+                .orElseThrow(() -> new ApiException(
+                        ErrorCode.WORKSPACE_ACCESS_DENIED,
+                        "워크스페이스 멤버만 사용자를 검색할 수 있습니다."));
+        return workspaceMemberRepository
+                .searchMembers(workspaceId, currentUserId, keyword, PageRequest.of(0, safeSize))
                 .stream()
-                .filter(user -> !user.getId().equals(currentUserId))
-                .map(UserSummaryResponse::from)
+                .map(member -> UserSummaryResponse.from(member.getUser()))
                 .toList();
     }
 }

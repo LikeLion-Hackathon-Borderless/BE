@@ -7,6 +7,7 @@ import com.likelion.asyncalign.user.dto.UserSummaryResponse;
 
 public record ConversationResponse(
         UUID id,
+        UUID workspaceId,
         String type,
         UserSummaryResponse otherParticipant,
         LatestMessage latestMessage,
