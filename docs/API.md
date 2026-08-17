@@ -1,6 +1,6 @@
 ﻿# Meridian API 명세서
 
-> 버전: v0.4 / 기준일: 2026-08-17<br>
+> 버전: v1.0 / 기준일: 2026-08-17<br>
 > 대상: Spring Boot 3.5, PostgreSQL, JWT Bearer 인증<br>
 > Base URL: `{BACKEND_ORIGIN}/api/v1`
 
@@ -13,15 +13,13 @@
 | OpenAPI YAML | `/v3/api-docs.yaml` | OpenAPI 3.0 YAML 명세 |
 | 이 문서 | `docs/API.md` | 현재 API와 앞으로 구현할 MVP 계약 및 업무 흐름 |
 
-Swagger에서 `Authorize`를 누르고 로그인 응답의 `accessToken`만 입력하면 인증 API를 호출할 수 있다. 아직 구현되지 않은 API는 호출 가능한 것처럼 보이지 않도록 Swagger에 노출하지 않고 이 문서에서 `신규 예정`으로 구분한다.
+Swagger에서 `Authorize`를 누르고 로그인 응답의 `accessToken`만 입력하면 인증 API를 호출할 수 있다. 아래 MVP API 38개는 모두 구현되어 Swagger에서 직접 호출할 수 있다.
 
 ### 현재 전달 상태
 
 | 구분 | API 수 | 프론트 사용 방법 |
 | --- | ---: | --- |
-| 현재 구현 | 22 | 실제 서버와 Swagger에서 호출 |
-| 초대·첨부까지 | 29 | 구현 전에는 이 문서 기준으로 Mock 개발 |
-| AI 검토·이해 카드·합의 기록까지 | 38 | 전체 목표 |
+| 현재 구현 | 38 | 인증부터 합의 기록까지 실제 서버와 Swagger에서 호출 |
 
 API 명세는 구현 완료 후 작성하는 결과물이 아니라 구현 전에 프론트와 합의하는 계약이다. 구현 과정에서 계약이 바뀌면 문서 버전을 올리고 변경 내용을 공유한다.
 
@@ -29,9 +27,7 @@ API 명세는 구현 완료 후 작성하는 결과물이 아니라 구현 전�
 
 | 상태 | 의미 |
 | --- | --- |
-| 구현 완료 | 현재 코드에서 호출 가능하며 Swagger에 노출됨 |
-| 확장 예정 | 현재 엔드포인트는 있지만 요청·응답 확장이 필요함 |
-| 신규 예정 | 와이어프레임 구현을 위해 새로 개발해야 함 |
+| 구현 완료 | 현재 코드에서 호출 가능하며 통합 테스트와 Swagger에 포함됨 |
 
 ### 1.1 기능 우선순위
 
@@ -137,10 +133,10 @@ JWT가 없거나 유효하지 않은 경우에도 같은 형식으로 `INVALID_C
 | 구현 완료 | GET | `/workspaces/{workspaceId}` | 워크스페이스 상세 |
 | 구현 완료 | GET | `/workspaces/{workspaceId}/members` | 멤버 목록 |
 | 구현 완료 | DELETE | `/workspaces/{workspaceId}` | OWNER의 워크스페이스 소프트 삭제 |
-| 신규 예정 | POST | `/workspaces/{workspaceId}/invitations` | 이메일 다중 초대 |
-| 신규 예정 | POST | `/workspaces/{workspaceId}/invitation-links` | 공유 초대 링크 생성/재발급 |
-| 신규 예정 | GET | `/workspace-invitations/{token}` | 초대 내용 미리보기(공개) |
-| 신규 예정 | POST | `/workspace-invitations/{token}/accept` | 로그인 사용자의 초대 수락 |
+| 구현 완료 | POST | `/workspaces/{workspaceId}/invitations` | 이메일 다중 초대 |
+| 구현 완료 | POST | `/workspaces/{workspaceId}/invitation-links` | 공유 초대 링크 생성/재발급 |
+| 구현 완료 | GET | `/workspace-invitations/{token}` | 초대 내용 미리보기(공개) |
+| 구현 완료 | POST | `/workspace-invitations/{token}/accept` | 로그인 사용자의 초대 수락 |
 | 구현 완료 | PUT | `/workspaces/{workspaceId}/members/me/work-context` | 워크스페이스 근무 예외 저장 |
 | 구현 완료 | DELETE | `/workspaces/{workspaceId}/members/me/work-context` | 예외 제거 후 계정 기본값 상속 |
 
@@ -148,28 +144,28 @@ JWT가 없거나 유효하지 않은 경우에도 같은 형식으로 `INVALID_C
 
 | 상태 | Method | Path | 설명 |
 | --- | --- | --- | --- |
-| 확장 예정 | POST | `/conversations/direct` | 1:1 DM 생성/기존 DM 반환 |
+| 구현 완료 | POST | `/conversations/direct` | 워크스페이스 1:1 DM 생성/기존 DM 반환 |
 | 구현 완료 | GET | `/conversations` | 내 DM 목록 |
 | 구현 완료 | PUT | `/conversations/{conversationId}/read` | 현재까지 읽음 처리 |
 | 구현 완료 | GET | `/conversations/{conversationId}/messages` | 메시지 조회 |
-| 확장 예정 | POST | `/conversations/{conversationId}/messages` | 일반/AI 확정/예약 메시지 전송 |
-| 신규 예정 | POST | `/conversations/{conversationId}/attachments` | 첨부파일 업로드 |
-| 신규 예정 | GET | `/attachments/{attachmentId}` | 첨부 메타데이터 및 처리 상태 |
-| 신규 예정 | GET | `/attachments/{attachmentId}/content` | 권한 확인 후 파일 다운로드 |
+| 구현 완료 | POST | `/conversations/{conversationId}/messages` | 일반/예약 메시지 전송 |
+| 구현 완료 | POST | `/conversations/{conversationId}/attachments` | 첨부파일 업로드 |
+| 구현 완료 | GET | `/attachments/{attachmentId}` | 첨부 메타데이터 및 처리 상태 |
+| 구현 완료 | GET | `/attachments/{attachmentId}/content` | 권한 확인 후 파일 다운로드 |
 
 ### 3.5 AI 검토·공통 이해·합의
 
 | 상태 | Method | Path | 설명 |
 | --- | --- | --- | --- |
-| 신규 예정 | POST | `/conversations/{conversationId}/ai-reviews` | 초안과 파일의 AI 검토 실행 |
-| 신규 예정 | GET | `/ai-reviews/{reviewId}` | AI 검토 결과/상태 조회 |
-| 신규 예정 | PATCH | `/ai-reviews/{reviewId}` | 추출 결과를 사용자가 수정·확정 |
-| 신규 예정 | POST | `/ai-reviews/{reviewId}/send` | 확정된 검토 결과와 메시지 전송 |
-| 신규 예정 | POST | `/messages/{messageId}/understanding-cards` | 수신자가 “이해 돕기” 생성 |
-| 신규 예정 | GET | `/understanding-cards/{cardId}` | 공통 이해 카드 조회 |
-| 신규 예정 | POST | `/understanding-cards/{cardId}/responses` | 동의/기한 조정/설명 요청 |
-| 신규 예정 | POST | `/understanding-cards/{cardId}/revisions` | 발신자가 카드 수정본 제출 |
-| 신규 예정 | GET | `/conversations/{conversationId}/agreement-logs` | 대화의 합의 기록 조회 |
+| 구현 완료 | POST | `/conversations/{conversationId}/ai-reviews` | 초안과 파일의 AI 검토 실행 |
+| 구현 완료 | GET | `/ai-reviews/{reviewId}` | AI 검토 결과/상태 조회 |
+| 구현 완료 | PATCH | `/ai-reviews/{reviewId}` | 추출 결과를 사용자가 수정·확정 |
+| 구현 완료 | POST | `/ai-reviews/{reviewId}/send` | 확정된 검토 결과와 메시지 전송 |
+| 구현 완료 | POST | `/messages/{messageId}/understanding-cards` | 수신자가 “이해 돕기” 생성 |
+| 구현 완료 | GET | `/understanding-cards/{cardId}` | 공통 이해 카드 조회 |
+| 구현 완료 | POST | `/understanding-cards/{cardId}/responses` | 동의/기한 조정/설명 요청 |
+| 구현 완료 | POST | `/understanding-cards/{cardId}/revisions` | 발신자가 카드 수정본 제출 |
+| 구현 완료 | GET | `/conversations/{conversationId}/agreement-logs` | 대화의 합의 기록 조회 |
 
 ---
 
@@ -378,11 +374,7 @@ file: (binary)
 
 ### 5.6 사용자 검색
 
-현재 구현:
-
-`GET /api/v1/users?query=alex&size=20`
-
-워크스페이스 구현 후 확정 계약:
+현재 계약:
 
 `GET /api/v1/users?workspaceId={workspaceId}&query=alex&size=20`
 
@@ -668,7 +660,7 @@ workspaces.deleted_by uuid nullable
 
 `POST /api/v1/conversations/direct`
 
-현재 구현 요청:
+요청:
 
 ```json
 {
@@ -676,7 +668,7 @@ workspaces.deleted_by uuid nullable
 }
 ```
 
-워크스페이스 구현 후 요청:
+현재 워크스페이스 범위 요청:
 
 ```json
 {
@@ -723,7 +715,7 @@ workspaces.deleted_by uuid nullable
 
 `GET /api/v1/conversations/{conversationId}/messages?before={instant}&size=50`
 
-현재 구현 응답:
+기본 응답 필드:
 
 ```json
 {
@@ -773,7 +765,7 @@ AI/첨부 구현 후 각 메시지에 아래 필드를 추가한다.
 
 `POST /api/v1/conversations/{conversationId}/messages`
 
-현재 구현은 `content`만 받는다. 확장 계약:
+현재 요청 계약:
 
 ```json
 {
@@ -832,7 +824,7 @@ file: (binary)
   "originalFileName": "스펙_v3.pdf",
   "contentType": "application/pdf",
   "size": 1482031,
-  "processingStatus": "PROCESSING",
+  "processingStatus": "READY",
   "extractionErrorCode": null,
   "createdAt": "2026-08-14T09:00:00Z"
 }
@@ -944,13 +936,13 @@ AI 추출 실패(E15/E16)여도 원본 파일 전송은 허용한다. AI 검토 
   "assigneeUserId": "e54839db-5a97-433f-bec9-35d85cc0ea12",
   "deadline": "2026-08-15T16:00:00Z",
   "expectedOutcome": "방향 유지 및 세부 수정 제안",
-  "confirmedEvidenceIds": ["ev_82c7"],
+  "confirmedEvidenceIds": ["7e83e3aa-3c47-4c96-86c4-6c08ed46d730"],
   "confirmed": true
 }
 ```
 
 - `confirmed=true`일 때 `task`, `assigneeUserId`, `deadline`, `expectedOutcome`을 최종 값으로 고정한다.
-- 타임존이 없는 사용자가 관련되면 정확한 현지시각 확정을 막고 `TIME_ZONE_REQUIRED`를 반환한다(E05).
+- 계정 생성 시 기본 타임존 `UTC`가 저장되며, 프로필 또는 워크스페이스 근무 설정에서 IANA 타임존으로 변경할 수 있다.
 - 수정한 값과 AI 원안을 둘 다 저장해 감사 로그에 남긴다.
 
 ### 10.4 AI 검토 확정 후 전송
@@ -1152,13 +1144,13 @@ AI 확정 전송 또는 이해 돕기 생성
 | E01 모호성 없음 | 오류 아님 | - | AI 검토 생략 가능 안내 |
 | E02 발신자 확인 스킵 | 오류 아님 | - | `AS_IS`, `UNCONFIRMED`, 합의 로그 없음 |
 | E04 수신자 비근무시간 | `OUTSIDE_RECIPIENT_WORK_HOURS` | 200 warning | 대안 시각 제시; 수정/그대로/예약 선택 |
-| E05 타임존 미등록 | `TIME_ZONE_REQUIRED` | 422 | 현지 변환 차단, 설정 화면 유도 |
+| E05 타임존 미등록 | 오류 아님 | - | 가입 기본값 `UTC` 적용, 설정 화면에서 변경 가능 |
 | E09 AI 신뢰도 낮음 | 오류 아님 | - | 값을 `null`, confidence `LOW/UNKNOWN`으로 반환 |
-| E10 AI 추출/번역 실패 | `AI_REVIEW_FAILED` | 502 | 원문 일반 전송은 허용, 실패 로그 저장 |
+| E10 AI 추출/번역 실패 | `AI_REVIEW_FAILED` | 200 warning | 로컬 분석으로 폴백하고 원문 전송 허용 |
 | E13 같은 언어 | 오류 아님 | - | 번역 생략, 구조화만 수행 |
 | E14 DST/지역 변경 | 오류 아님 | - | IANA timezone으로 자동 반영 |
 | E15 파일 추출 오류 | `ATTACHMENT_EXTRACTION_FAILED` | 200 warning | 낮은 확신 근거 후보, 발신자 확인 필요 |
-| E16 AI가 파일을 못 읽음 | `ATTACHMENT_UNREADABLE` | 200 warning | 원본 파일 전송 가능, 실패 표시 |
+| E16 AI가 파일을 못 읽음 | `ATTACHMENT_EXTRACTION_FAILED` | 200 warning | 원본 파일 전송 가능, 실패 표시 |
 | O-a 가입 검증 실패 | `INVALID_REQUEST` | 400 | 필드별 오류 표시 |
 | O-b 인증코드 만료 | `VERIFICATION_CODE_EXPIRED` | 410 | 재발송 버튼 활성화 |
 | O-c 초대코드 무효 | `INVITATION_INVALID` | 400 | 초대코드를 확인할 수 없음 표시 |
@@ -1167,7 +1159,7 @@ AI 확정 전송 또는 이해 돕기 생성
 
 ### 13.2 전체 오류 코드
 
-현재 구현 코드:
+현재 구현 HTTP 오류 코드:
 
 | code | HTTP |
 | --- | --- |
@@ -1187,13 +1179,6 @@ AI 확정 전송 또는 이해 돕기 생성
 | `VERIFICATION_CODE_EXPIRED` | 410 |
 | `VERIFICATION_RESEND_TOO_SOON` | 429 |
 | `FILE_UPLOAD_FAILED` | 400 |
-| `DIRECT_CONVERSATION_WITH_SELF` | 400 |
-| `INTERNAL_SERVER_ERROR` | 500 |
-
-신규 기능에서 추가할 코드:
-
-| code | HTTP |
-| --- | --- |
 | `INVITATION_INVALID` | 400 |
 | `INVITATION_EXPIRED` | 410 |
 | `INVITATION_EMAIL_MISMATCH` | 403 |
@@ -1202,15 +1187,26 @@ AI 확정 전송 또는 이해 돕기 생성
 | `ATTACHMENT_ACCESS_DENIED` | 403 |
 | `FILE_SIZE_EXCEEDED` | 413 |
 | `UNSUPPORTED_FILE_TYPE` | 415 |
-| `ATTACHMENT_EXTRACTION_FAILED` | 422 또는 warning |
-| `ATTACHMENT_UNREADABLE` | 422 또는 warning |
 | `AI_REVIEW_NOT_FOUND` | 404 |
 | `AI_REVIEW_FAILED` | 502 |
 | `AI_REVIEW_NOT_CONFIRMED` | 409 |
-| `TIME_ZONE_REQUIRED` | 422 |
+| `AI_REVIEW_EXPIRED` | 410 |
 | `UNDERSTANDING_CARD_NOT_FOUND` | 404 |
-| `INVALID_CARD_STATE` | 409 |
-| `OUTSIDE_RECIPIENT_WORK_HOURS` | warning |
+| `CARD_INVALID_STATE` | 409 |
+| `CARD_RESPONSE_NOT_ALLOWED` | 403 |
+| `REVISION_LIMIT_EXCEEDED` | 409 |
+| `DIRECT_CONVERSATION_WITH_SELF` | 400 |
+| `INTERNAL_SERVER_ERROR` | 500 |
+
+성공 응답의 `warnings[]`에 포함되는 코드:
+
+| code | 의미 |
+| --- | --- |
+| `AMBIGUOUS_DEADLINE` | 정확한 날짜·시각·타임존 확인 필요 |
+| `AMBIGUOUS_EXPECTED_OUTCOME` | 기대 결과 또는 완료 기준 확인 필요 |
+| `OUTSIDE_RECIPIENT_WORK_HOURS` | 수신자 근무시간 밖이며 대안 시각 제공 |
+| `AI_REVIEW_FAILED` | OpenAI 실패 후 로컬 분석으로 폴백 |
+| `ATTACHMENT_EXTRACTION_FAILED` | 첨부 텍스트 추출 실패, 원본 확인 필요 |
 
 ### 13.3 빈 상태
 
@@ -1220,7 +1216,7 @@ AI 확정 전송 또는 이해 돕기 생성
 | 메시지 없음 | `messages=[]`, `hasMore=false` |
 | 워크스페이스 없음 | `GET /workspaces`가 `[]`, `onboardingStep=WORKSPACE` |
 | 합의 기록 없음 | `logs=[]`, `hasMore=false` |
-| AI 실패 | `AIReview.status=FAILED` 또는 `AI_REVIEW_FAILED` |
+| AI 실패 | 응답 `warnings[].code=AI_REVIEW_FAILED`, 결과는 로컬 분석 폴백 |
 | 파일 추출 실패 | `Attachment.processingStatus=EXTRACTION_FAILED` |
 
 ---
@@ -1240,7 +1236,7 @@ POST /auth/email-verifications
 → POST /workspaces/{id}/invitations (선택)
 ```
 
-현재 백엔드는 근무 컨텍스트 저장 후 `onboardingStep=WORKSPACE`로 진행하고, 워크스페이스 생성 성공 트랜잭션에서 `COMPLETED`로 변경한다. 초대 수락을 통한 완료 전환은 초대 API 구현 시 추가한다.
+현재 백엔드는 근무 컨텍스트 저장 후 `onboardingStep=WORKSPACE`로 진행하고, 워크스페이스 생성 또는 초대 수락 성공 트랜잭션에서 `COMPLETED`로 변경한다.
 
 ### 14.2 일반 전송
 
@@ -1274,19 +1270,19 @@ POST /conversations/{id}/ai-reviews
 
 ---
 
-## 15. 구현 전에 확정해야 할 항목
+## 15. 구현 결정과 운영 전 확인 항목
 
 아래 항목은 API 계약에서 기본값을 정했지만 팀 합의 후 변경할 수 있다.
 
 1. 파일 저장소: 로컬/Docker volume은 데모용, 배포는 S3 호환 객체 스토리지 권장.
 2. 초대 링크 만료: 현재 명세 기본 7일, 이메일 초대도 동일하게 적용.
-3. AI 처리: MVP는 동기 응답으로 시작하고 지연이 크면 `PROCESSING` polling으로 전환.
-4. 예약 전송: 일정이 빠듯하면 P1로 미루고 E04에서 “그대로 전송/시각 수정”만 제공.
+3. AI 처리는 동기 응답이며 `OPENAI_API_KEY`가 없거나 호출에 실패하면 안전한 로컬 분석으로 폴백한다.
+4. 예약 전송은 DB 저장 후 5초 주기의 dispatcher가 만료된 예약 메시지를 `SENT`로 전환한다.
 5. 합의·파일 보존 기간: 해커톤 데모는 무기한, 실제 서비스 전 개인정보 정책 필요.
 6. 워크스페이스 권한: MVP는 `OWNER`, `MEMBER` 두 단계만 사용.
 7. 실시간성: MVP는 3~5초 polling으로 시작하고 시간 여유가 있으면 WebSocket/SSE 추가.
 
-## 16. 권장 구현 순서
+## 16. 구현 완료 순서
 
 1. `workspace`, `workspace_member`, `workspace_invitation` 및 워크스페이스 소프트 삭제
 2. 대화에 `workspace_id` 연결

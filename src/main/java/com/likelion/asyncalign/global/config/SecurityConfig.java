@@ -54,6 +54,7 @@ public class SecurityConfig {
                                 "/api/v1/auth/email-verifications",
                                 "/api/v1/auth/email-verifications/confirm").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/roles").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/workspace-invitations/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated())

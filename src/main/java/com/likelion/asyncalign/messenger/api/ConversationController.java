@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @RestController
 @RequestMapping("/api/v1/conversations")
@@ -42,13 +43,16 @@ public class ConversationController {
             @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody CreateDirectConversationRequest request
     ) {
-        return conversationService.createDirect(currentUserId(jwt), request.otherUserId());
+        return conversationService.createDirect(currentUserId(jwt), request.workspaceId(), request.otherUserId());
     }
 
     @GetMapping
     @Operation(summary = "대화방 목록 조회", description = "최근 활동 시각 내림차순으로 내 1:1 대화방을 반환합니다.")
-    List<ConversationResponse> getConversations(@AuthenticationPrincipal Jwt jwt) {
-        return conversationService.getConversations(currentUserId(jwt));
+    List<ConversationResponse> getConversations(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam UUID workspaceId
+    ) {
+        return conversationService.getConversations(currentUserId(jwt), workspaceId);
     }
 
     @PutMapping("/{conversationId}/read")

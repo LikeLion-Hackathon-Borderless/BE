@@ -49,13 +49,13 @@ public class MessageController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "메시지 전송", description = "최대 4,000자의 텍스트 메시지를 전송합니다.")
+    @Operation(summary = "메시지 전송", description = "텍스트·첨부파일을 일반 또는 예약 전송합니다.")
     MessageResponse send(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID conversationId,
             @Valid @RequestBody SendMessageRequest request
     ) {
-        return messageService.send(conversationId, currentUserId(jwt), request.content());
+        return messageService.send(conversationId, currentUserId(jwt), request);
     }
 
     private UUID currentUserId(Jwt jwt) {

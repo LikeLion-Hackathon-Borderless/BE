@@ -86,11 +86,20 @@ MAIL_FROM=sender@gmail.com
 
 ```env
 PUBLIC_BASE_URL=https://api.example.com
+FRONTEND_BASE_URL=https://app.example.com
 CORS_ALLOWED_ORIGINS=https://app.example.com
+OPENAI_API_KEY=프로젝트_API_키
+OPENAI_MODEL=gpt-4o-mini
 ```
 
 프론트는 배포된 `PUBLIC_BASE_URL`의 로그인 API에서 JWT를 받고 이후 요청의 Authorization 헤더에 넣는다.
 
 ## 프로필 파일 보존
 
-현재 Docker Compose는 `async-align-uploads` 볼륨에 프로필 이미지를 보존한다. 단일 서버 MVP에는 충분하지만 여러 인스턴스를 운영하면 S3 호환 객체 스토리지로 교체해야 한다.
+현재 Docker Compose는 `async-align-uploads` 볼륨에 프로필 이미지와 대화 첨부파일을 보존한다. 단일 서버 MVP에는 충분하지만 여러 인스턴스를 운영하면 S3 호환 객체 스토리지로 교체해야 한다.
+
+## AI 검토 설정
+
+- `OPENAI_API_KEY`가 있으면 Responses API의 구조화 출력을 사용한다.
+- 키가 없거나 API 호출에 실패하면 모호한 값을 추측하지 않는 로컬 분석으로 자동 폴백한다.
+- 로컬 폴백에서도 발신자가 업무·담당자·정확한 기한·기대 결과를 직접 확정해야 전송할 수 있다.

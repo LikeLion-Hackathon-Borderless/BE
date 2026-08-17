@@ -18,6 +18,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import com.likelion.asyncalign.workspace.domain.Workspace;
+import com.likelion.asyncalign.workspace.domain.WorkspaceRepository;
+import com.likelion.asyncalign.workspace.domain.WorkspaceMember;
+import com.likelion.asyncalign.workspace.domain.WorkspaceMemberRepository;
+import com.likelion.asyncalign.workspace.domain.WorkspaceRole;
+import com.likelion.asyncalign.user.domain.UserRepository;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -30,15 +36,38 @@ class MessengerFlowIntegrationTest {
     @Autowired
     ObjectMapper objectMapper;
 
+    @Autowired
+    WorkspaceRepository workspaceRepository;
+
+    @Autowired
+    WorkspaceMemberRepository workspaceMemberRepository;
+
+    @Autowired
+    UserRepository userRepository;
+
     @Test
     void createDirectConversationAndSendMessage() throws Exception {
         Map<String, Object> seoyeon = signUp("sender@example.com", "이서연", "Asia/Seoul");
         Map<String, Object> alex = signUp("receiver@example.com", "Alex", "America/Los_Angeles");
         String senderToken = seoyeon.get("accessToken").toString();
+        UUID senderId = UUID.fromString(((Map<?, ?>) seoyeon.get("user")).get("id").toString());
         UUID alexId = UUID.fromString(((Map<?, ?>) alex.get("user")).get("id").toString());
+
+        String workspaceBody = mockMvc.perform(post("/api/v1/workspaces")
+                        .header("Authorization", "Bearer " + senderToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Messenger Team\",\"organizationDomain\":null}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        UUID workspaceId = UUID.fromString(objectMapper.readValue(
+                workspaceBody, new TypeReference<Map<String, Object>>() {}).get("id").toString());
+        Workspace workspace = workspaceRepository.findById(workspaceId).orElseThrow();
+        workspaceMemberRepository.saveAndFlush(new WorkspaceMember(
+                workspace, userRepository.findById(alexId).orElseThrow(), WorkspaceRole.MEMBER));
 
         mockMvc.perform(get("/api/v1/users")
                         .header("Authorization", "Bearer " + senderToken)
+                        .param("workspaceId", workspaceId.toString())
                         .param("query", "Alex"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].displayName").value("Alex"))
@@ -49,7 +78,9 @@ class MessengerFlowIntegrationTest {
         String conversationBody = mockMvc.perform(post("/api/v1/conversations/direct")
                         .header("Authorization", "Bearer " + senderToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("otherUserId", alexId))))
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "workspaceId", workspaceId,
+                                "otherUserId", alexId))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.otherParticipant.displayName").value("Alex"))
                 .andExpect(jsonPath("$.otherParticipant.email").doesNotExist())
@@ -61,7 +92,10 @@ class MessengerFlowIntegrationTest {
         mockMvc.perform(post("/api/v1/conversations/{id}/messages", conversationId)
                         .header("Authorization", "Bearer " + senderToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("content", "내일까지 검토 부탁드려요."))))
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "content", "내일까지 검토 부탁드려요.",
+                                "attachmentIds", java.util.List.of(),
+                                "deliveryMode", "AS_IS"))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.senderLocalSentAt").exists())
                 .andExpect(jsonPath("$.viewerLocalSentAt").exists());

@@ -20,7 +20,7 @@ public class OpenApiConfig {
                 .info(new Info()
                         .title("Meridian API")
                         .description("글로벌 비동기 협업을 위한 JWT 인증, 워크스페이스, 사용자, 1:1 메신저 API")
-                        .version("0.4.0"))
+                        .version("1.0.0"))
                 .servers(java.util.List.of(
                         new Server()
                                 .url(publicBaseUrl)
