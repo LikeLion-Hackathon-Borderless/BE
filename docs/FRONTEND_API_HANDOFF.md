@@ -1,7 +1,7 @@
 # 프론트엔드 API 인계
 
-> 계약 버전: v0.3  
-> 기준일: 2026-08-16  
+> 계약 버전: v0.4
+> 기준일: 2026-08-17
 > 인증: 이메일/비밀번호 로그인 + JWT Bearer Token
 
 ## 1. 문서 구분
@@ -15,7 +15,7 @@
 
 Swagger에 없는 예정 API는 아직 실제 서버에서 호출할 수 없다. 프론트는 `docs/API.md`의 요청·응답을 기준으로 Mock 데이터를 만들 수 있다.
 
-현재 서버 연동이 가능한 범위와 Mock 범위를 섞지 않는다. 특히 `onboardingStep=WORKSPACE` 이후, 워크스페이스·첨부파일·AI·이해 카드·합의 기록은 해당 API가 Swagger에 나타나기 전까지 Mock 대상이다.
+현재 서버 연동이 가능한 범위와 Mock 범위를 섞지 않는다. 워크스페이스 핵심 API는 실제 연동하고, 초대·첨부파일·AI·이해 카드·합의 기록은 해당 API가 Swagger에 나타나기 전까지 Mock 대상이다.
 
 ## 2. 서버 주소
 
@@ -39,8 +39,8 @@ VITE_BACKEND_ORIGIN=http://localhost:8080
 
 | 단계 | 총 API 수 | 상태 |
 | --- | ---: | --- |
-| 인증·사용자·기본 DM | 15 | 현재 구현 완료 |
-| 워크스페이스·초대·첨부 | 29 | 다음 구현 범위 |
+| 워크스페이스 핵심까지 | 22 | 현재 구현 완료 |
+| 초대·첨부까지 | 29 | 다음 구현 범위 |
 | AI 검토·이해 카드·합의 기록 | 38 | 전체 여정 목표 |
 
 API 개수는 리소스 설계에 따라 소폭 달라질 수 있다. 완료 여부는 회원가입부터 합의까지의 사용자 여정과 테스트를 기준으로 판단한다.
@@ -67,7 +67,19 @@ PUT   /users/me/profile-image
 PATCH /users/me/work-context
 ```
 
-현재 근무 컨텍스트 저장 후 서버가 반환할 수 있는 마지막 단계는 `WORKSPACE`다. 워크스페이스 API가 구현되기 전에는 프론트가 이후 화면을 Mock으로 연결하며 `COMPLETED`를 임의로 서버 상태처럼 저장하지 않는다.
+근무 컨텍스트 저장 후 `WORKSPACE`, 워크스페이스 생성 성공 후 `COMPLETED`가 반환된다. 초대 수락을 통한 완료 전환은 초대 API 구현 전까지 Mock 대상이다.
+
+### 워크스페이스 핵심
+
+```text
+POST   /workspaces
+GET    /workspaces
+GET    /workspaces/{workspaceId}
+GET    /workspaces/{workspaceId}/members
+DELETE /workspaces/{workspaceId}
+PUT    /workspaces/{workspaceId}/members/me/work-context
+DELETE /workspaces/{workspaceId}/members/me/work-context
+```
 
 ### 대화·메시지
 
@@ -81,20 +93,13 @@ POST /conversations/{conversationId}/messages
 
 ## 5. 다음 구현 후 호출할 API
 
-### 워크스페이스·초대
+### 워크스페이스 초대
 
 ```text
-POST   /workspaces
-GET    /workspaces
-GET    /workspaces/{workspaceId}
-GET    /workspaces/{workspaceId}/members
-DELETE /workspaces/{workspaceId}
 POST   /workspaces/{workspaceId}/invitations
 POST   /workspaces/{workspaceId}/invitation-links
 GET    /workspace-invitations/{token}
 POST   /workspace-invitations/{token}/accept
-PUT    /workspaces/{workspaceId}/members/me/work-context
-DELETE /workspaces/{workspaceId}/members/me/work-context
 ```
 
 ### 첨부파일
@@ -207,8 +212,8 @@ InvitationStatus: PENDING | ACCEPTED | EXPIRED | REVOKED
 
 1. 이메일 인증·회원가입·로그인과 JWT 처리
 2. 한 페이지 온보딩과 프로필 이미지
-3. 워크스페이스 허브는 Mock 데이터로 먼저 구현
-4. 워크스페이스 API가 배포되면 Mock을 실제 호출로 교체
+3. 워크스페이스 허브·생성·상세·멤버·삭제를 실제 API로 연결
+4. 워크스페이스 초대 화면은 Mock 데이터로 먼저 구현
 5. 대화방과 메시지에 `workspaceId` 적용
 6. 파일 업로드 후 `attachmentId`로 메시지 전송
 7. AI 검토·이해 카드·합의 기록은 전체 계약 기준으로 Mock 개발
