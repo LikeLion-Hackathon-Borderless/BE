@@ -1,6 +1,6 @@
 ﻿# Meridian API 명세서
 
-> 버전: v0.3 / 기준일: 2026-08-16<br>
+> 버전: v0.4 / 기준일: 2026-08-17<br>
 > 대상: Spring Boot 3.5, PostgreSQL, JWT Bearer 인증<br>
 > Base URL: `{BACKEND_ORIGIN}/api/v1`
 
@@ -19,8 +19,8 @@ Swagger에서 `Authorize`를 누르고 로그인 응답의 `accessToken`만 입�
 
 | 구분 | API 수 | 프론트 사용 방법 |
 | --- | ---: | --- |
-| 현재 구현 | 15 | 실제 서버와 Swagger에서 호출 |
-| 워크스페이스·초대·첨부까지 | 29 | 구현 전에는 이 문서 기준으로 Mock 개발 |
+| 현재 구현 | 22 | 실제 서버와 Swagger에서 호출 |
+| 초대·첨부까지 | 29 | 구현 전에는 이 문서 기준으로 Mock 개발 |
 | AI 검토·이해 카드·합의 기록까지 | 38 | 전체 목표 |
 
 API 명세는 구현 완료 후 작성하는 결과물이 아니라 구현 전에 프론트와 합의하는 계약이다. 구현 과정에서 계약이 바뀌면 문서 버전을 올리고 변경 내용을 공유한다.
@@ -132,17 +132,17 @@ JWT가 없거나 유효하지 않은 경우에도 같은 형식으로 `INVALID_C
 
 | 상태 | Method | Path | 설명 |
 | --- | --- | --- | --- |
-| 신규 예정 | POST | `/workspaces` | 워크스페이스 생성 |
-| 신규 예정 | GET | `/workspaces` | 내 워크스페이스 목록 |
-| 신규 예정 | GET | `/workspaces/{workspaceId}` | 워크스페이스 상세 |
-| 신규 예정 | GET | `/workspaces/{workspaceId}/members` | 멤버 목록 |
-| 신규 예정 | DELETE | `/workspaces/{workspaceId}` | OWNER의 워크스페이스 소프트 삭제 |
+| 구현 완료 | POST | `/workspaces` | 워크스페이스 생성 |
+| 구현 완료 | GET | `/workspaces` | 내 워크스페이스 목록 |
+| 구현 완료 | GET | `/workspaces/{workspaceId}` | 워크스페이스 상세 |
+| 구현 완료 | GET | `/workspaces/{workspaceId}/members` | 멤버 목록 |
+| 구현 완료 | DELETE | `/workspaces/{workspaceId}` | OWNER의 워크스페이스 소프트 삭제 |
 | 신규 예정 | POST | `/workspaces/{workspaceId}/invitations` | 이메일 다중 초대 |
 | 신규 예정 | POST | `/workspaces/{workspaceId}/invitation-links` | 공유 초대 링크 생성/재발급 |
 | 신규 예정 | GET | `/workspace-invitations/{token}` | 초대 내용 미리보기(공개) |
 | 신규 예정 | POST | `/workspace-invitations/{token}/accept` | 로그인 사용자의 초대 수락 |
-| 신규 예정 | PUT | `/workspaces/{workspaceId}/members/me/work-context` | 워크스페이스 근무 예외 저장 |
-| 신규 예정 | DELETE | `/workspaces/{workspaceId}/members/me/work-context` | 예외 제거 후 계정 기본값 상속 |
+| 구현 완료 | PUT | `/workspaces/{workspaceId}/members/me/work-context` | 워크스페이스 근무 예외 저장 |
+| 구현 완료 | DELETE | `/workspaces/{workspaceId}/members/me/work-context` | 예외 제거 후 계정 기본값 상속 |
 
 ### 3.4 대화·메시지·파일
 
@@ -509,8 +509,16 @@ Authorization: Bearer eyJ...
       "displayName": "Alex",
       "profileImageUrl": null,
       "workRole": "DEVELOPER",
+      "customRole": null,
       "timeZoneId": "America/Los_Angeles",
       "preferredLanguage": "en"
+    },
+    "workContext": {
+      "overridden": false,
+      "timeZoneId": "America/Los_Angeles",
+      "workStart": "09:00:00",
+      "workEnd": "18:00:00",
+      "workDays": ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]
     }
   }
 ]
@@ -635,6 +643,18 @@ workspaces.deleted_by uuid nullable
 `PUT /api/v1/workspaces/{workspaceId}/members/me/work-context`
 
 요청은 5.5와 동일하다. 저장된 예외는 해당 워크스페이스에서만 계정 기본값보다 우선한다.
+
+`200 OK`
+
+```json
+{
+  "overridden": true,
+  "timeZoneId": "America/Los_Angeles",
+  "workStart": "08:30:00",
+  "workEnd": "17:30:00",
+  "workDays": ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY"]
+}
+```
 
 `DELETE /api/v1/workspaces/{workspaceId}/members/me/work-context`
 
@@ -1157,6 +1177,10 @@ AI 확정 전송 또는 이해 돕기 생성
 | `USER_NOT_FOUND` | 404 |
 | `CONVERSATION_NOT_FOUND` | 404 |
 | `MESSAGE_NOT_FOUND` | 404 |
+| `WORKSPACE_NOT_FOUND` | 404 |
+| `WORKSPACE_ACCESS_DENIED` | 403 |
+| `WORKSPACE_OWNER_REQUIRED` | 403 |
+| `WORKSPACE_ALREADY_DELETED` | 409 |
 | `EMAIL_ALREADY_EXISTS` | 409 |
 | `EMAIL_VERIFICATION_REQUIRED` | 400 |
 | `INVALID_VERIFICATION_CODE` | 400 |
@@ -1170,10 +1194,6 @@ AI 확정 전송 또는 이해 돕기 생성
 
 | code | HTTP |
 | --- | --- |
-| `WORKSPACE_NOT_FOUND` | 404 |
-| `WORKSPACE_ACCESS_DENIED` | 403 |
-| `WORKSPACE_OWNER_REQUIRED` | 403 |
-| `WORKSPACE_ALREADY_DELETED` | 409 |
 | `INVITATION_INVALID` | 400 |
 | `INVITATION_EXPIRED` | 410 |
 | `INVITATION_EMAIL_MISMATCH` | 403 |
@@ -1220,7 +1240,7 @@ POST /auth/email-verifications
 → POST /workspaces/{id}/invitations (선택)
 ```
 
-현재 백엔드는 근무 컨텍스트 저장 후 `onboardingStep=WORKSPACE`까지 진행한다. 워크스페이스 API가 구현되기 전에는 프론트가 워크스페이스 허브·생성·초대 화면을 Mock으로 연결하며, 실제 서버에서 `COMPLETED`로 전환되었다고 가정하지 않는다. 워크스페이스 생성 또는 초대 수락 API가 구현되면 그 성공 트랜잭션에서 `COMPLETED`로 변경한다.
+현재 백엔드는 근무 컨텍스트 저장 후 `onboardingStep=WORKSPACE`로 진행하고, 워크스페이스 생성 성공 트랜잭션에서 `COMPLETED`로 변경한다. 초대 수락을 통한 완료 전환은 초대 API 구현 시 추가한다.
 
 ### 14.2 일반 전송
 
