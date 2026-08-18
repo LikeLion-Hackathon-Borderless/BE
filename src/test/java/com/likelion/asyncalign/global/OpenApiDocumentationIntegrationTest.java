@@ -53,6 +53,7 @@ class OpenApiDocumentationIntegrationTest {
                 .andExpect(jsonPath("$.paths['/api/v1/conversations/{conversationId}/ai-reviews'].post").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/ai-reviews/{reviewId}'].get").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/ai-reviews/{reviewId}'].patch").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/ai-reviews/{reviewId}/answers'].post").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/ai-reviews/{reviewId}/send'].post").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/messages/{messageId}/understanding-cards'].post").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/understanding-cards/{cardId}'].get").exists())

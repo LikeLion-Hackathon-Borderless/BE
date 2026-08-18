@@ -1,5 +1,9 @@
 package com.likelion.asyncalign.alignment.application;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.likelion.asyncalign.alignment.application.AiAgentClient.SessionResult;
+import com.likelion.asyncalign.alignment.domain.AiAgentSessionStatus;
 import com.likelion.asyncalign.alignment.domain.AiReview;
 import com.likelion.asyncalign.alignment.domain.AiReviewEvidence;
 import com.likelion.asyncalign.alignment.domain.AiReviewEvidenceRepository;
@@ -11,6 +15,7 @@ import com.likelion.asyncalign.alignment.domain.UnderstandingCardRepository;
 import com.likelion.asyncalign.alignment.domain.UnderstandingCardRevision;
 import com.likelion.asyncalign.alignment.domain.UnderstandingCardRevisionRepository;
 import com.likelion.asyncalign.alignment.dto.AiReviewResponse;
+import com.likelion.asyncalign.alignment.dto.AnswerAiReviewRequest;
 import com.likelion.asyncalign.alignment.dto.CreateAiReviewRequest;
 import com.likelion.asyncalign.alignment.dto.SendAiReviewRequest;
 import com.likelion.asyncalign.alignment.dto.UpdateAiReviewRequest;
@@ -35,6 +40,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -43,12 +49,16 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional(readOnly = true)
 public class AiReviewService {
+
+    private static final Logger log = LoggerFactory.getLogger(AiReviewService.class);
 
     private final AiReviewRepository reviewRepository;
     private final AiReviewEvidenceRepository evidenceRepository;
@@ -57,6 +67,8 @@ public class AiReviewService {
     private final MessageRepository messageRepository;
     private final AttachmentService attachmentService;
     private final AiReviewAnalyzer analyzer;
+    private final AiAgentClient aiAgentClient;
+    private final ObjectMapper objectMapper;
     private final UserRepository userRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final MessageService messageService;
@@ -71,6 +83,8 @@ public class AiReviewService {
             MessageRepository messageRepository,
             AttachmentService attachmentService,
             AiReviewAnalyzer analyzer,
+            AiAgentClient aiAgentClient,
+            ObjectMapper objectMapper,
             UserRepository userRepository,
             WorkspaceMemberRepository workspaceMemberRepository,
             MessageService messageService,
@@ -84,6 +98,8 @@ public class AiReviewService {
         this.messageRepository = messageRepository;
         this.attachmentService = attachmentService;
         this.analyzer = analyzer;
+        this.aiAgentClient = aiAgentClient;
+        this.objectMapper = objectMapper;
         this.userRepository = userRepository;
         this.workspaceMemberRepository = workspaceMemberRepository;
         this.messageService = messageService;
@@ -105,13 +121,35 @@ public class AiReviewService {
                 .map(attachment -> attachment.getOriginalFileName() + ": "
                         + (attachment.getExtractedText() == null ? "텍스트 추출 없음" : attachment.getExtractedText()))
                 .toList();
-        AiReviewAnalyzer.Analysis analysis = analyzer.analyze(new AiReviewAnalyzer.AnalysisInput(
+        AiReviewAnalyzer.AnalysisInput analysisInput = new AiReviewAnalyzer.AnalysisInput(
                 request.content().trim(),
                 membership.getUser().getPreferredLanguage(),
                 recipient.getPreferredLanguage(),
                 recipient.getId(),
                 recentMessages,
-                attachmentContexts));
+                attachmentContexts);
+        AiReviewAnalyzer.Analysis analysis = analyzer.analyze(analysisInput);
+        SessionResult agentResult = null;
+        if (aiAgentClient.isEnabled()) {
+            try {
+                WorkspaceMember recipientContext = workspaceMemberRepository.findMembership(
+                                membership.getConversation().getWorkspace().getId(), recipient.getId())
+                        .orElseThrow(() -> new ApiException(
+                                ErrorCode.WORKSPACE_ACCESS_DENIED,
+                                "수신자의 워크스페이스 근무 설정을 찾을 수 없습니다."));
+                agentResult = aiAgentClient.start(agentStartInput(
+                        request.content().trim(),
+                        membership.getUser(),
+                        recipient,
+                        recipientContext,
+                        recentMessages,
+                        attachments));
+                analysis = analysisFromAgent(agentResult, analysis);
+            } catch (AiAgentClient.AiAgentClientException exception) {
+                log.warn("Ditto AI session start failed; using local fallback: {}", exception.getMessage());
+                analysis = withProvider(analysis, "DITTO_AI_FAILURE");
+            }
+        }
         AiReview review = reviewRepository.save(new AiReview(
                 membership.getConversation(),
                 membership.getUser(),
@@ -128,6 +166,9 @@ public class AiReviewService {
                 analysis.provider(),
                 Instant.now().plus(Duration.ofHours(24)),
                 attachments));
+        if (agentResult != null) {
+            applyAgentSession(review, agentResult);
+        }
         for (Attachment attachment : attachments) {
             String excerpt = attachment.getExtractedText();
             if (excerpt != null && excerpt.length() > 500) {
@@ -147,6 +188,40 @@ public class AiReviewService {
     public AiReviewResponse get(UUID reviewId, UUID userId) {
         AiReview review = getAuthorized(reviewId, userId);
         expire(review);
+        return toResponse(review, otherParticipant(review.getConversation().getId(), review.getCreator().getId()));
+    }
+
+    @Transactional
+    public AiReviewResponse answer(UUID reviewId, UUID userId, AnswerAiReviewRequest request) {
+        AiReview review = getAuthorized(reviewId, userId);
+        requireCreator(review, userId);
+        expire(review);
+        if (review.getStatus() == AiReviewStatus.EXPIRED) {
+            throw new ApiException(ErrorCode.AI_REVIEW_EXPIRED, "AI 검토가 만료되었습니다.");
+        }
+        if (review.getAgentSessionStatus() != AiAgentSessionStatus.INTERRUPT
+                || review.getAgentThreadId() == null) {
+            throw new ApiException(ErrorCode.AI_AGENT_INVALID_STATE, "응답을 기다리는 AI 확인 항목이 없습니다.");
+        }
+        if (!aiAgentClient.isEnabled()) {
+            throw new ApiException(ErrorCode.AI_REVIEW_FAILED, "AI 서비스가 비활성화되어 세션을 계속할 수 없습니다.");
+        }
+        try {
+            SessionResult result = aiAgentClient.answer(review.getAgentThreadId(), request.answer().trim());
+            applyAgentSession(review, result);
+            if (result.done()) {
+                AiAgentClient.ConfirmedCard card = requireCard(result);
+                review.applyAgentAnalysis(
+                        review.getTranslatedContent(),
+                        card.task(),
+                        parseDeadline(card.deadlineConfirmed()),
+                        preferredOutcome(card),
+                        "DITTO_AGENT");
+            }
+        } catch (AiAgentClient.AiAgentClientException exception) {
+            log.warn("Ditto AI session resume failed: {}", exception.getMessage());
+            throw new ApiException(ErrorCode.AI_REVIEW_FAILED, "AI 확인 응답 처리에 실패했습니다. 다시 시도해 주세요.");
+        }
         return toResponse(review, otherParticipant(review.getConversation().getId(), review.getCreator().getId()));
     }
 
@@ -279,9 +354,180 @@ public class AiReviewService {
                                 confirmed)),
                 evidence(review.getId()),
                 warnings(review, recipient, deadline),
+                agentSession(review),
                 review.getProvider(),
                 review.getCreatedAt(),
                 review.getExpiresAt());
+    }
+
+    private AiAgentClient.StartInput agentStartInput(
+            String content,
+            User sender,
+            User recipient,
+            WorkspaceMember recipientContext,
+            List<String> recentMessages,
+            List<Attachment> attachments
+    ) {
+        return new AiAgentClient.StartInput(
+                null,
+                content,
+                new AiAgentClient.UserContext(
+                        sender.getId().toString(),
+                        sender.getDisplayName(),
+                        sender.getTimeZoneId(),
+                        sender.getPreferredLanguage()),
+                new AiAgentClient.UserContext(
+                        recipient.getId().toString(),
+                        recipient.getDisplayName(),
+                        recipientContext.getEffectiveTimeZoneId(),
+                        recipient.getPreferredLanguage()),
+                new AiAgentClient.WorkContext(
+                        recipientContext.getEffectiveWorkStart().toString(),
+                        recipientContext.getEffectiveWorkEnd().toString(),
+                        recipientContext.getEffectiveWorkDays().stream()
+                                .sorted()
+                                .map(DayOfWeek::name)
+                                .toList()),
+                recentMessages,
+                attachments.stream()
+                        .map(attachment -> new AiAgentClient.AttachmentContext(
+                                attachment.getId().toString(),
+                                attachment.getOriginalFileName(),
+                                attachment.getExtractedText()))
+                        .toList());
+    }
+
+    private AiReviewAnalyzer.Analysis analysisFromAgent(
+            SessionResult result,
+            AiReviewAnalyzer.Analysis fallback
+    ) {
+        if (result.interrupted()) {
+            return withProvider(fallback, "DITTO_AGENT");
+        }
+        if (!result.done()) {
+            throw new AiAgentClient.AiAgentClientException(502, "Unknown AI session status: " + result.status());
+        }
+        AiAgentClient.ConfirmedCard card = requireCard(result);
+        Instant deadline = parseDeadline(card.deadlineConfirmed());
+        return new AiReviewAnalyzer.Analysis(
+                fallback.sourceLanguage(),
+                fallback.translatedContent(),
+                card.task(),
+                card.task() == null ? ConfidenceLevel.UNKNOWN : ConfidenceLevel.HIGH,
+                deadline,
+                deadline == null ? ConfidenceLevel.LOW : ConfidenceLevel.HIGH,
+                preferredOutcome(card),
+                preferredOutcome(card) == null ? ConfidenceLevel.UNKNOWN : ConfidenceLevel.MEDIUM,
+                "DITTO_AGENT");
+    }
+
+    private AiReviewAnalyzer.Analysis withProvider(
+            AiReviewAnalyzer.Analysis analysis,
+            String provider
+    ) {
+        return new AiReviewAnalyzer.Analysis(
+                analysis.sourceLanguage(),
+                analysis.translatedContent(),
+                analysis.task(),
+                analysis.taskConfidence(),
+                analysis.deadline(),
+                analysis.deadlineConfidence(),
+                analysis.expectedOutcome(),
+                analysis.expectedOutcomeConfidence(),
+                provider);
+    }
+
+    private void applyAgentSession(AiReview review, SessionResult result) {
+        if (review.getAgentThreadId() != null && !review.getAgentThreadId().equals(result.threadId())) {
+            throw new ApiException(ErrorCode.AI_AGENT_INVALID_STATE, "AI 세션 식별자가 일치하지 않습니다.");
+        }
+        AiAgentSessionStatus status;
+        if (result.interrupted()) {
+            status = AiAgentSessionStatus.INTERRUPT;
+        } else if (result.done()) {
+            status = AiAgentSessionStatus.DONE;
+        } else {
+            status = AiAgentSessionStatus.FAILED;
+        }
+        review.updateAgentSession(
+                result.threadId(),
+                status,
+                result.interrupt() == null ? null : writeJson(result.interrupt(), 4000),
+                result.card() == null ? null : writeJson(result.card(), 8000));
+    }
+
+    private AiReviewResponse.AgentSession agentSession(AiReview review) {
+        if (review.getAgentSessionStatus() == null) {
+            return null;
+        }
+        AiAgentClient.InterruptPayload interrupt = null;
+        if (review.getAgentInterruptJson() != null) {
+            try {
+                interrupt = objectMapper.readValue(
+                        review.getAgentInterruptJson(), AiAgentClient.InterruptPayload.class);
+            } catch (JsonProcessingException exception) {
+                log.warn("Stored AI interrupt payload is invalid for review {}", review.getId());
+            }
+        }
+        AiReviewResponse.AmbiguityItem item = interrupt == null || interrupt.item() == null
+                ? null
+                : new AiReviewResponse.AmbiguityItem(
+                        interrupt.item().span(),
+                        interrupt.item().category(),
+                        interrupt.item().reason(),
+                        interrupt.item().candidates(),
+                        interrupt.item().suggestion());
+        return new AiReviewResponse.AgentSession(
+                review.getAgentThreadId(),
+                review.getAgentSessionStatus(),
+                interrupt == null ? null : interrupt.step(),
+                interrupt == null ? null : interrupt.total(),
+                item);
+    }
+
+    private String writeJson(Object value, int maxLength) {
+        try {
+            String json = objectMapper.writeValueAsString(value);
+            if (json.length() > maxLength) {
+                throw new ApiException(ErrorCode.AI_REVIEW_FAILED, "AI 응답이 저장 가능한 크기를 초과했습니다.");
+            }
+            return json;
+        } catch (JsonProcessingException exception) {
+            throw new ApiException(ErrorCode.AI_REVIEW_FAILED, "AI 응답을 저장하지 못했습니다.");
+        }
+    }
+
+    private AiAgentClient.ConfirmedCard requireCard(SessionResult result) {
+        if (result.card() == null) {
+            throw new AiAgentClient.AiAgentClientException(502, "Completed AI session has no card");
+        }
+        return result.card();
+    }
+
+    private String preferredOutcome(AiAgentClient.ConfirmedCard card) {
+        if (normalize(card.expectedOutcome()) != null) {
+            return normalize(card.expectedOutcome());
+        }
+        if (normalize(card.interpretationNote()) != null) {
+            return normalize(card.interpretationNote());
+        }
+        return normalize(card.requestType());
+    }
+
+    private Instant parseDeadline(String value) {
+        String normalized = normalize(value);
+        if (normalized == null || normalized.equals("명시된 기한 없음")) {
+            return null;
+        }
+        try {
+            return OffsetDateTime.parse(normalized).toInstant();
+        } catch (Exception ignored) {
+            try {
+                return Instant.parse(normalized);
+            } catch (Exception secondIgnored) {
+                return null;
+            }
+        }
     }
 
     private List<AiReviewResponse.Warning> warnings(AiReview review, User recipient, Instant deadline) {

@@ -89,6 +89,19 @@ public class AiReview extends BaseEntity {
     @Column(nullable = false, length = 30)
     private String provider;
 
+    @Column(length = 100)
+    private String agentThreadId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private AiAgentSessionStatus agentSessionStatus;
+
+    @Column(length = 4000)
+    private String agentInterruptJson;
+
+    @Column(length = 8000)
+    private String agentCardJson;
+
     @Column(nullable = false)
     private Instant expiresAt;
 
@@ -151,6 +164,35 @@ public class AiReview extends BaseEntity {
         this.status = confirmed ? AiReviewStatus.CONFIRMED : AiReviewStatus.READY;
     }
 
+    public void updateAgentSession(
+            String threadId,
+            AiAgentSessionStatus status,
+            String interruptJson,
+            String cardJson
+    ) {
+        this.agentThreadId = threadId;
+        this.agentSessionStatus = status;
+        this.agentInterruptJson = interruptJson;
+        this.agentCardJson = cardJson;
+    }
+
+    public void applyAgentAnalysis(
+            String translatedContent,
+            String task,
+            Instant deadline,
+            String expectedOutcome,
+            String provider
+    ) {
+        this.translatedContent = translatedContent;
+        this.aiTask = task;
+        this.aiTaskConfidence = task == null ? ConfidenceLevel.UNKNOWN : ConfidenceLevel.HIGH;
+        this.aiDeadline = deadline;
+        this.aiDeadlineConfidence = deadline == null ? ConfidenceLevel.LOW : ConfidenceLevel.HIGH;
+        this.aiExpectedOutcome = expectedOutcome;
+        this.aiExpectedOutcomeConfidence = expectedOutcome == null ? ConfidenceLevel.UNKNOWN : ConfidenceLevel.MEDIUM;
+        this.provider = provider;
+    }
+
     public void markSent() {
         this.status = AiReviewStatus.SENT;
     }
@@ -180,6 +222,10 @@ public class AiReview extends BaseEntity {
     public Instant getFinalDeadline() { return finalDeadline; }
     public String getFinalExpectedOutcome() { return finalExpectedOutcome; }
     public String getProvider() { return provider; }
+    public String getAgentThreadId() { return agentThreadId; }
+    public AiAgentSessionStatus getAgentSessionStatus() { return agentSessionStatus; }
+    public String getAgentInterruptJson() { return agentInterruptJson; }
+    public String getAgentCardJson() { return agentCardJson; }
     public Instant getExpiresAt() { return expiresAt; }
     public List<Attachment> getAttachments() { return List.copyOf(attachments); }
 }

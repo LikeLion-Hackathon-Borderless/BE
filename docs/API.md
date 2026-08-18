@@ -159,6 +159,7 @@ JWT가 없거나 유효하지 않은 경우에도 같은 형식으로 `INVALID_C
 | --- | --- | --- | --- |
 | 구현 완료 | POST | `/conversations/{conversationId}/ai-reviews` | 초안과 파일의 AI 검토 실행 |
 | 구현 완료 | GET | `/ai-reviews/{reviewId}` | AI 검토 결과/상태 조회 |
+| 구현 완료 | POST | `/ai-reviews/{reviewId}/answers` | AI 모호성 질문에 답하고 세션 재개 |
 | 구현 완료 | PATCH | `/ai-reviews/{reviewId}` | 추출 결과를 사용자가 수정·확정 |
 | 구현 완료 | POST | `/ai-reviews/{reviewId}/send` | 확정된 검토 결과와 메시지 전송 |
 | 구현 완료 | POST | `/messages/{messageId}/understanding-cards` | 수신자가 “이해 돕기” 생성 |
@@ -911,6 +912,20 @@ AI 추출 실패(E15/E16)여도 원본 파일 전송은 허용한다. AI 검토 
       "suggestedDeadline": "2026-08-15T16:00:00Z"
     }
   ],
+  "agentSession": {
+    "threadId": "56cc2b3f-844b-4ad8-9d4d-ab6fbdf9e230",
+    "status": "INTERRUPT",
+    "step": 1,
+    "total": 2,
+    "item": {
+      "span": "조금 더 고민해 보면 어떨까요?",
+      "category": "REQUEST_INTENT",
+      "reason": "여러 의도로 해석될 수 있습니다.",
+      "candidates": ["현재 방향 유지 + 세부 보완 요청", "완곡한 반대", "추가 논의 요청"],
+      "suggestion": "실제 의도를 선택해 주세요."
+    }
+  },
+  "provider": "DITTO_AGENT",
   "createdAt": "2026-08-14T09:00:00Z",
   "expiresAt": "2026-08-15T09:00:00Z"
 }
@@ -920,13 +935,32 @@ AI 추출 실패(E15/E16)여도 원본 파일 전송은 허용한다. AI 검토 
 
 `confidence`: `HIGH`, `MEDIUM`, `LOW`, `UNKNOWN`.
 
+`agentSession.status`: `INTERRUPT`, `DONE`, `FAILED`. AI 서비스가 비활성화된 로컬
+fallback에서는 `agentSession`이 `null`이다.
+
 ### 10.2 AI 검토 상태 조회
 
 `GET /api/v1/ai-reviews/{reviewId}`
 
 10.1 응답과 같다. 초기 구현을 비동기로 바꿀 경우 생성 API는 `202 Accepted + status=PROCESSING`을 반환하고 이 API를 1초 간격으로 조회한다. MVP 첫 구현은 동기 `201`로 시작해도 계약의 결과 구조는 유지한다.
 
-### 10.3 사용자의 추출 결과 수정·확정
+### 10.3 AI 모호성 확인 답변
+
+`POST /api/v1/ai-reviews/{reviewId}/answers`
+
+```json
+{
+  "answer": "현재 방향 유지 + 세부 보완 요청"
+}
+```
+
+- `agentSession.status=INTERRUPT`인 경우에만 AI 검토 생성자(발신자)가 호출한다.
+- 응답은 10.1과 같은 `AiReviewResponse`다.
+- 다음 질문이 있으면 `INTERRUPT`와 새 `item`이 반환되므로 같은 API를 반복 호출한다.
+- 모든 모호성을 확인하면 `DONE`이 되고 구조화 필드에 agent 결과가 반영된다.
+- `DONE` 이후에는 10.4의 수정·확정 API로 최종값을 검토한다.
+
+### 10.4 사용자의 추출 결과 수정·확정
 
 `PATCH /api/v1/ai-reviews/{reviewId}`
 
@@ -945,7 +979,7 @@ AI 추출 실패(E15/E16)여도 원본 파일 전송은 허용한다. AI 검토 
 - 계정 생성 시 기본 타임존 `UTC`가 저장되며, 프로필 또는 워크스페이스 근무 설정에서 IANA 타임존으로 변경할 수 있다.
 - 수정한 값과 AI 원안을 둘 다 저장해 감사 로그에 남긴다.
 
-### 10.4 AI 검토 확정 후 전송
+### 10.5 AI 검토 확정 후 전송
 
 `POST /api/v1/ai-reviews/{reviewId}/send`
 

@@ -2,6 +2,7 @@ package com.likelion.asyncalign.alignment.api;
 
 import com.likelion.asyncalign.alignment.application.AiReviewService;
 import com.likelion.asyncalign.alignment.dto.AiReviewResponse;
+import com.likelion.asyncalign.alignment.dto.AnswerAiReviewRequest;
 import com.likelion.asyncalign.alignment.dto.CreateAiReviewRequest;
 import com.likelion.asyncalign.alignment.dto.SendAiReviewRequest;
 import com.likelion.asyncalign.alignment.dto.UpdateAiReviewRequest;
@@ -64,6 +65,16 @@ public class AiReviewController {
             @Valid @RequestBody UpdateAiReviewRequest request
     ) {
         return aiReviewService.update(reviewId, userId(jwt), request);
+    }
+
+    @PostMapping("/ai-reviews/{reviewId}/answers")
+    @Operation(summary = "AI 모호성 확인 답변", description = "agentSession이 INTERRUPT인 동안 답변을 제출합니다. DONE이 될 때까지 반복할 수 있습니다.")
+    AiReviewResponse answer(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID reviewId,
+            @Valid @RequestBody AnswerAiReviewRequest request
+    ) {
+        return aiReviewService.answer(reviewId, userId(jwt), request);
     }
 
     @PostMapping("/ai-reviews/{reviewId}/send")

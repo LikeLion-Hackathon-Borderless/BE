@@ -7,6 +7,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      ai:
+        condition: service_healthy
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/async_align
       DB_USERNAME: async_align
@@ -21,14 +23,29 @@ services:
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
       MAIL_FROM: ${MAIL_FROM:-}
+      EMAIL_VERIFICATION_REQUIRED: ${EMAIL_VERIFICATION_REQUIRED:-true}
       UPLOAD_ROOT: /app/data/uploads
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
-      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      DITTO_AI_ENABLED: "true"
+      DITTO_AI_BASE_URL: http://ai:8000
+      DITTO_INTERNAL_API_KEY: ${DITTO_INTERNAL_API_KEY:-local-ai-internal-key-change-me}
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     volumes:
       - async-align-uploads:/app/data/uploads
+
+  ai:
+    build: ./ai-service
+    container_name: async-align-ai
+    environment:
+      DITTO_LLM_MODE: ${DITTO_LLM_MODE:-mock}
+      DITTO_OPENAI_MODEL: ${DITTO_OPENAI_MODEL:-o3-mini}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      DITTO_INTERNAL_API_KEY: ${DITTO_INTERNAL_API_KEY:-local-ai-internal-key-change-me}
+      DITTO_CHECKPOINT_DB: /app/data/ditto_checkpoints.db
+    expose:
+      - "8000"
+    volumes:
+      - async-align-ai-checkpoints:/app/data
 
   postgres:
     image: postgres:17-alpine
@@ -50,3 +67,4 @@ services:
 volumes:
   async-align-postgres-data:
   async-align-uploads:
+  async-align-ai-checkpoints:
