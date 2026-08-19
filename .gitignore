@@ -1,4 +1,5 @@
 .gradle/
+.gradle-user-home/
 build/
 out/
 bin/
@@ -8,3 +9,8 @@ bin/
 .env
 *.log
 data/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/

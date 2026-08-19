@@ -89,7 +89,9 @@ PUBLIC_BASE_URL=https://api.example.com
 FRONTEND_BASE_URL=https://app.example.com
 CORS_ALLOWED_ORIGINS=https://app.example.com
 OPENAI_API_KEY=프로젝트_API_키
-OPENAI_MODEL=gpt-4o-mini
+DITTO_LLM_MODE=live
+DITTO_OPENAI_MODEL=o3-mini
+DITTO_INTERNAL_API_KEY=백엔드와_AI서비스가_공유할_랜덤값
 ```
 
 프론트는 배포된 `PUBLIC_BASE_URL`의 로그인 API에서 JWT를 받고 이후 요청의 Authorization 헤더에 넣는다.
@@ -100,6 +102,8 @@ OPENAI_MODEL=gpt-4o-mini
 
 ## AI 검토 설정
 
-- `OPENAI_API_KEY`가 있으면 Responses API의 구조화 출력을 사용한다.
-- 키가 없거나 API 호출에 실패하면 모호한 값을 추측하지 않는 로컬 분석으로 자동 폴백한다.
+- Docker Compose는 Spring과 Python/LangGraph AI 서비스를 별도 컨테이너로 실행한다.
+- `DITTO_LLM_MODE=mock`은 키 없이 테스트하고, `live`는 `OPENAI_API_KEY`로 실제 호출한다.
+- OpenAI 키는 AI 컨테이너에만 전달하고 Spring 컨테이너에는 전달하지 않는다.
+- AI 서비스 호출에 실패하면 모호한 값을 추측하지 않는 로컬 분석으로 자동 폴백한다.
 - 로컬 폴백에서도 발신자가 업무·담당자·정확한 기한·기대 결과를 직접 확정해야 전송할 수 있다.

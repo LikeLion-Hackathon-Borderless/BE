@@ -1,6 +1,7 @@
 package com.likelion.asyncalign.alignment.dto;
 
 import com.likelion.asyncalign.alignment.domain.AiReviewStatus;
+import com.likelion.asyncalign.alignment.domain.AiAgentSessionStatus;
 import com.likelion.asyncalign.alignment.domain.ConfidenceLevel;
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -18,6 +19,7 @@ public record AiReviewResponse(
         StructuredFields structuredFields,
         List<Evidence> evidence,
         List<Warning> warnings,
+        AgentSession agentSession,
         String provider,
         Instant createdAt,
         Instant expiresAt
@@ -57,5 +59,23 @@ public record AiReviewResponse(
     }
 
     public record Warning(String code, String message, Instant suggestedDeadline) {
+    }
+
+    public record AgentSession(
+            String threadId,
+            AiAgentSessionStatus status,
+            Integer step,
+            Integer total,
+            AmbiguityItem item
+    ) {
+    }
+
+    public record AmbiguityItem(
+            String span,
+            String category,
+            String reason,
+            List<String> candidates,
+            String suggestion
+    ) {
     }
 }

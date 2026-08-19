@@ -16,7 +16,7 @@
 - 일반·예약·AI 확정 메시지 전송
 - 읽음 처리와 대화 목록의 읽지 않은 메시지 수
 - UTC 저장 및 IANA 타임존 기반 발신자/조회자 현지 시각 표시
-- OpenAI 기반 업무 조건 구조 추출과 안전한 로컬 폴백
+- LangGraph 기반 다단계 모호성 확인과 안전한 로컬 폴백
 - 공통 이해 카드와 수신자 3지 응답
 - 발신자 수정본과 revision 상태 전이
 - 대화별 합의 기록과 파일 근거 스냅샷
@@ -33,12 +33,22 @@
 - Flyway
 - Gradle 8.14.3 Wrapper
 - H2 테스트 DB
+- Python 3.13, FastAPI, LangGraph
 
 ## 테스트
 
 ```powershell
 .\gradlew.bat test
 ```
+
+AI 서비스는 Docker Compose에서 내부 네트워크로만 노출된다. 로컬 mock 전체 실행:
+
+```powershell
+docker compose up -d --build
+```
+
+실제 OpenAI 호출은 `.env`의 `DITTO_LLM_MODE=live`와 `OPENAI_API_KEY`를 설정한다.
+Spring 백엔드는 OpenAI 키를 직접 사용하지 않고 `http://ai:8000`의 내부 AI 서비스만 호출한다.
 
 Windows에서 저장소 전체 경로에 한글이 포함된 경우 Gradle 테스트 워커의 클래스패스 인코딩 문제로 `ClassNotFoundException`이 발생할 수 있습니다. 이 경우 저장소를 영문 경로에 두거나 임시 드라이브에 연결한 경로에서 테스트합니다.
 

@@ -76,8 +76,8 @@ public class EmailVerificationService {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(from);
         message.setTo(email);
-        message.setSubject("[Meridian] 이메일 인증번호");
-        message.setText("Meridian 이메일 인증번호는 " + code + " 입니다. 10분 안에 입력해 주세요.");
+        message.setSubject("[ditto] 이메일 인증번호");
+        message.setText("ditto 이메일 인증번호는 " + code + " 입니다. 10분 안에 입력해 주세요.");
         mailSender.send(message);
     }
 

@@ -111,6 +111,7 @@ GET  /attachments/{attachmentId}/content
 ```text
 POST  /conversations/{conversationId}/ai-reviews
 GET   /ai-reviews/{reviewId}
+POST  /ai-reviews/{reviewId}/answers
 PATCH /ai-reviews/{reviewId}
 POST  /ai-reviews/{reviewId}/send
 POST  /messages/{messageId}/understanding-cards
@@ -119,6 +120,11 @@ POST  /understanding-cards/{cardId}/responses
 POST  /understanding-cards/{cardId}/revisions
 GET   /conversations/{conversationId}/agreement-logs?before=&size=
 ```
+
+AI 검토 생성 응답의 `agentSession.status`가 `INTERRUPT`이면 `item.suggestion`과
+`item.candidates`를 표시한다. 사용자가 선택하거나 직접 입력한 값을
+`POST /ai-reviews/{reviewId}/answers`의 `{ "answer": "..." }`로 보내고, `DONE`이
+될 때까지 반복한다. `DONE` 이후 기존 `PATCH → send` 흐름을 진행한다.
 
 ### 기존 API 확장
 

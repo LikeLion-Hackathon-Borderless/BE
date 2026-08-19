@@ -1,0 +1,9 @@
+.git
+.gradle
+build
+bin
+.idea
+.vscode
+.env
+ai-service
+data

@@ -15,10 +15,10 @@ public class OpenApiConfig {
     public static final String BEARER_AUTH = "bearerAuth";
 
     @Bean
-    OpenAPI meridianOpenApi(@Value("${app.public-base-url}") String publicBaseUrl) {
+    OpenAPI dittoOpenApi(@Value("${app.public-base-url}") String publicBaseUrl) {
         return new OpenAPI()
                 .info(new Info()
-                        .title("Meridian API")
+                        .title("ditto API")
                         .description("글로벌 비동기 협업을 위한 JWT 인증, 워크스페이스, 사용자, 1:1 메신저 API")
                         .version("1.0.0"))
                 .servers(java.util.List.of(

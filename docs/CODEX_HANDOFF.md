@@ -74,7 +74,9 @@
 ### AI 검토·공통 이해·합의
 
 - 업무·담당자·기한·결과물 구조화와 사용자 수정·확정
-- OpenAI Responses API 연동 및 실패 시 보수적 로컬 분석
+- Python/LangGraph agent의 다단계 모호성 확인(`start → resume → done`)
+- Spring에서만 공개하는 JWT API와 내부 FastAPI AI 어댑터
+- AI 서비스 실패 시 보수적 로컬 분석
 - 근무시간 경고와 다음 근무 시작 시각 제안
 - AI 확정 메시지와 일반 메시지의 공통 이해 카드
 - 동의·기한 조정·설명 요청·발신자 수정·재확인 상태 전이
@@ -126,6 +128,7 @@ GET  /api/v1/attachments/{attachmentId}/content
 
 POST  /api/v1/conversations/{conversationId}/ai-reviews
 GET   /api/v1/ai-reviews/{reviewId}
+POST  /api/v1/ai-reviews/{reviewId}/answers
 PATCH /api/v1/ai-reviews/{reviewId}
 POST  /api/v1/ai-reviews/{reviewId}/send
 POST  /api/v1/messages/{messageId}/understanding-cards
@@ -146,6 +149,7 @@ GET   /api/v1/conversations/{conversationId}/agreement-logs
 - V8: 워크스페이스, 멤버십, 워크스페이스별 근무 컨텍스트
 - V9: 초대, 첨부파일, 워크스페이스 대화, 메시지 전송 상태
 - V10: AI 검토, 공통 이해 카드, 응답·수정, 합의 기록
+- V11: LangGraph thread, interrupt, 확정 card 세션 상태
 
 이미 적용된 Flyway migration의 checksum을 깨뜨리지 않기 위해 V5와 V6 파일은 삭제하지 않는다. 최종 스키마에는 관련 테이블이 남지 않는다.
 
@@ -170,8 +174,9 @@ EMAIL_VERIFICATION_REQUIRED=true
 UPLOAD_ROOT=./data/uploads
 
 OPENAI_API_KEY=
-OPENAI_MODEL=gpt-4o-mini
-OPENAI_BASE_URL=https://api.openai.com/v1
+DITTO_LLM_MODE=mock
+DITTO_OPENAI_MODEL=o3-mini
+DITTO_INTERNAL_API_KEY=AI_내부통신_랜덤_비밀값
 ```
 
 `MAIL_PASSWORD`는 이메일 인증코드 발송을 위한 SMTP 자격 증명이며 소셜 로그인과 관계없다.
