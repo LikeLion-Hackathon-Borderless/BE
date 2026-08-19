@@ -9,9 +9,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -34,6 +36,18 @@ public class GlobalExceptionHandler {
                 ErrorCode.INVALID_REQUEST.name(),
                 "요청 값이 올바르지 않습니다.",
                 fields));
+    }
+
+    @ExceptionHandler({
+            HttpMessageNotReadableException.class,
+            MethodArgumentTypeMismatchException.class
+    })
+    ResponseEntity<ApiErrorResponse> handleMalformedRequest(Exception exception) {
+        return ResponseEntity.badRequest().body(error(
+                HttpStatus.BAD_REQUEST,
+                ErrorCode.INVALID_REQUEST.name(),
+                "요청 값의 형식이 올바르지 않습니다.",
+                Map.of()));
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
