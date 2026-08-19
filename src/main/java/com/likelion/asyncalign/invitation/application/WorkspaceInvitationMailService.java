@@ -28,7 +28,7 @@ public class WorkspaceInvitationMailService {
             message.setFrom(from);
         }
         message.setTo(email);
-        message.setSubject("[Meridian] " + workspaceName + " 워크스페이스 초대");
+        message.setSubject("[ditto] " + workspaceName + " 워크스페이스 초대");
         message.setText("""
                 %s님이 %s 워크스페이스에 초대했습니다.
 

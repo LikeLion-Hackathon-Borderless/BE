@@ -31,7 +31,7 @@ class OpenApiDocumentationIntegrationTest {
         mockMvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.openapi", startsWith("3.0.")))
-                .andExpect(jsonPath("$.info.title").value("Meridian API"))
+                .andExpect(jsonPath("$.info.title").value("ditto API"))
                 .andExpect(jsonPath("$.info.version").value("1.0.0"))
                 .andExpect(jsonPath("$.components.securitySchemes.bearerAuth").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/auth/login'].post").exists())

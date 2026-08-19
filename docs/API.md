@@ -1,4 +1,4 @@
-﻿# Meridian API 명세서
+﻿# ditto API 명세서
 
 > 버전: v1.0 / 기준일: 2026-08-17<br>
 > 대상: Spring Boot 3.5, PostgreSQL, JWT Bearer 인증<br>
