@@ -1,3 +1,12 @@
+<p align="center">
+  <img src="assets/readme/Ditto_01.jpg" alt="Ditto 프로젝트 소개" width="720">
+  <img src="assets/readme/Ditto_02.jpg" alt="Ditto가 해결하는 협업 문제" width="720">
+  <img src="assets/readme/Ditto_03.jpg" alt="Ditto의 해결 방법" width="720">
+  <img src="assets/readme/Ditto_04.jpg" alt="AI 검토하기 기능" width="720">
+  <img src="assets/readme/Ditto_05.jpg" alt="공동 이해 카드와 합의 기록" width="720">
+  <img src="assets/readme/Ditto_06.jpg" alt="Ditto 팀과 기술 스택" width="720">
+</p>
+
 # ditto Backend
 
 > 글로벌 비동기 협업에서 메시지를 단순한 문장이 아닌, 모두가 같은 의미로 이해하는 업무 약속으로 변환하는 백엔드입니다.
